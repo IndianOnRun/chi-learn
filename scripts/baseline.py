@@ -51,7 +51,3 @@ def days_since_2001(end_date):
     start_date = date(2001, 1, 1)
     delta = end_date - start_date
     return delta.days
-
-
-def baseline_predict():
-    pass
