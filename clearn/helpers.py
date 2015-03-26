@@ -1,4 +1,5 @@
 import csv
+import pandas as pd
 
 
 def bin_from_csv(csv_name, series_to_bin):
@@ -17,3 +18,7 @@ def make_col_categorical(data_frame, col_name):
 
 def transform_from_csv(data_frame, col_name, csv_name):
     data_frame[col_name] = bin_from_csv(csv_name, data_frame[col_name])
+
+
+def reindex_by_date(data_frame):
+    data_frame.index = pd.to_datetime(data_frame['Date'])
