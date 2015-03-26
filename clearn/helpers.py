@@ -14,11 +14,34 @@ def bin_from_csv(csv_name, series_to_bin):
 
 def make_col_categorical(data_frame, col_name):
     data_frame[col_name] = data_frame[col_name].astype('category')
+    return data_frame
 
 
 def transform_from_csv(data_frame, col_name, csv_name):
     data_frame[col_name] = bin_from_csv(csv_name, data_frame[col_name])
+    return data_frame
 
 
 def reindex_by_date(data_frame):
     data_frame.index = pd.to_datetime(data_frame['Date'])
+    data_frame.drop('Date', 1, inplace=True)
+    return data_frame
+
+
+def drop_all_columns_but(data_frame, relevant_columns):
+    return data_frame.reindex(columns=relevant_columns)
+
+
+def convert_comm_area_nums_to_names(data_frame):
+    # Remove rows with invalid community area numbers
+    data_frame = data_frame[data_frame['Community Area'] > 0]
+    # Convert numbers to strings for easy binning
+    data_frame['Community Area'] = data_frame['Community Area'].map(lambda num: str(num))
+    data_frame = transform_from_csv(data_frame, 'Community Area', '../config/community_areas.csv')
+    return data_frame
+
+
+def drop_nonviolent_crimes(data_frame):
+    data_frame = transform_from_csv(data_frame, 'Primary Type', '../config/crime_bins.csv')
+    data_frame = data_frame[data_frame['Primary Type'] == 'Violent']
+    return data_frame
