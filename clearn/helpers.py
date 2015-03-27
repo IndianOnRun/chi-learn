@@ -60,3 +60,12 @@ def extract_severity_counts(data_frame):
     for severity in ['Violent', 'Severe', 'Minor', 'Petty']:
         data_frame[severity + ' Crimes'] = [int(category == severity) for category in data_frame['Primary Type']]
     return data_frame
+
+
+def extract_windows(daily_time_series, tag=''):
+    for severity in ['Violent', 'Severe', 'Minor', 'Petty']:
+        daily_time_series[severity + ' Crimes in Last Week' + tag] = \
+            pd.rolling_sum(daily_time_series[severity + ' Crimes'], 7)
+        daily_time_series[severity + ' Crimes in Last Month' + tag] = \
+            pd.rolling_sum(daily_time_series[severity + ' Crimes'], 30)
+    return daily_time_series
