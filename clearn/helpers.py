@@ -45,3 +45,18 @@ def drop_nonviolent_crimes(data_frame):
     data_frame = transform_from_csv(data_frame, 'Primary Type', '../config/crime_bins.csv')
     data_frame = data_frame[data_frame['Primary Type'] == 'Violent']
     return data_frame
+
+
+def extract_time_features(time_series):
+    time_series['Year'] = time_series.index.map(lambda stamp: stamp.year)
+    time_series['Month'] = time_series.index.map(lambda stamp: stamp.month)
+    time_series['Weekday'] = time_series.index.map(lambda stamp: stamp.weekday())
+    time_series = make_col_categorical(time_series, 'Month')
+    time_series = make_col_categorical(time_series, 'Weekday')
+    return time_series
+
+
+def extract_severity_counts(data_frame):
+    for severity in ['Violent', 'Severe', 'Minor', 'Petty']:
+        data_frame[severity + ' Crimes'] = [int(category == severity) for category in data_frame['Primary Type']]
+    return data_frame
