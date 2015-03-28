@@ -15,12 +15,13 @@ class DailyCrimesFactory:
         extra rolling window features,
     """
 
-    def __init__(self, stamps):
-        self.crimes = stamps
+    def __init__(self, crimes, include_time_features=False):
+        self.crimes = crimes
         self.extract_severity_counts()
         self.resample()
-        self.extract_time_features()
-        #TODO: Extract time window features
+        if include_time_features:
+            self.extract_time_features()
+        self.extract_windows()
 
     def extract_time_features(self):
         self.crimes['Year'] = self.crimes.index.map(lambda stamp: stamp.year)
@@ -52,8 +53,8 @@ class TrainingSetFactory:
         self.make_clean_timestamps()
         area_to_daily_crimes = self.get_daily_crimes_by_area()
         pan_chicago_daily_crimes = DailyCrimesFactory(self.crimes).crimes
-        self.feature_vectors = self.concat_city_with_areas(pan_chicago_daily_crimes, area_to_daily_crimes)
-
+        concatenated_crimes_by_area = self.concat_city_with_areas(pan_chicago_daily_crimes, area_to_daily_crimes)
+        self.feature_vectors_by_area = self.get_feature_vectors(concatenated_crimes_by_area)
 
     def make_clean_timestamps(self):
         self.drop_all_columns_but(['Date', 'Primary Type', 'Community Area', 'Arrest', 'Domestic'])
@@ -89,17 +90,28 @@ class TrainingSetFactory:
         area_to_daily_crimes = {}
         grouped = self.data_frame.groupby('Community Area')
         for name, frame in grouped:
-            area_crimes = DailyCrimesFactory(frame).crimes
-            # Concatenate the chicago stats to the community area stats
-            area_to_daily_crimes[name] = area_crimes.values
+            area_crimes = DailyCrimesFactory(frame, include_time_features=True).crimes
+            area_to_daily_crimes[name] = area_crimes
         return area_to_daily_crimes
 
-    def concat_city_with_area(self, pan_chicago_crimes, crimes_by_area):
-        pass
-
+    @staticmethod
+    def concat_city_with_areas(pan_chicago_crimes, crimes_by_area):
+        column_names = list(pan_chicago_crimes)
+        concatenated_crimes_by_area = {}
         for area in crimes_by_area:
             area_crimes = crimes_by_area[area]
-            area_crimes
+            for col in column_names:
+                area_crimes['Chicago ' + col] = pan_chicago_crimes[col]
+            concatenated_crimes_by_area[area] = area_crimes
+        return concatenated_crimes_by_area
+
+    @staticmethod
+    def get_feature_vectors(crimes_by_area):
+        feature_vectors_by_area = {}
+        for area in crimes_by_area:
+            feature_vectors_by_area[area] = crimes_by_area[area].values
+        return feature_vectors_by_area
+
 
 def make_cols_categorical(data_frame, col_names):
         for name in col_names:
@@ -134,21 +146,6 @@ def get_target_vectors(data_frame):
         targets[name] = area_crimes['Violent Crime Committed'].values
 
     return targets
-
-
-def get_feature_vectors(data_frame):
-    crimes = make_clean_timestamps(data_frame)
-    pan_chicago_series = get_summary(crimes)
-    community_area_features = {}
-    grouped_by_community = crimes.groupby('Community Area')
-    for name, frame in grouped_by_community:
-        area_series = get_summary(frame)
-        # Concatenate the chicago stats to the community area stats
-        community_area_features[name] = area_series.values
-
-def get_summary(crimes):
-    """  """
-    pass
 
 
 def drop_nonviolent_crimes(data_frame):
