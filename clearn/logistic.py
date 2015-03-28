@@ -23,8 +23,8 @@ class TrainingSetFactory:
     def get_feature_vectors(self):
         area_to_daily_crimes = self.get_daily_crimes_by_area()
         pan_chicago_daily_crimes = DailyCrimesFactory(self.data_frame).crimes
-        concatenated_crimes_by_area = self.concat_city_with_areas(pan_chicago_daily_crimes, area_to_daily_crimes)
-        return self.extract_features_from_data_frame(concatenated_crimes_by_area)
+        return self.concat_city_with_areas(pan_chicago_daily_crimes, area_to_daily_crimes)
+        # return self.extract_features_from_data_frame(concatenated_crimes_by_area)
 
     def get_daily_crimes_by_area(self):
         area_to_daily_crimes = {}
