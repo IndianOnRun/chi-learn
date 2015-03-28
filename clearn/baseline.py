@@ -1,53 +1,71 @@
 from __future__ import division
-import pandas as pd
 import csv
-from helpers import bin_from_csv
-from datetime import date
+import pandas as pd
+import time
 
-BEGIN_DATE = date(2001, 1, 1)
-
-
-def create_baseline(end_date):
-
-    # Load all crimes and trim the columns we won't use
-    raw_crimes = pd.read_csv('data/Crimes_-_2001_to_present.csv')
-    relevant_columns = ['Primary Type','Community Area']
-    trimmed_crimes = raw_crimes.reindex(columns=relevant_columns)
-
-    # Filter out nonviolent crimes
-    trimmed_crimes['Primary Type'] = bin_from_csv('config/crime_bins.csv',
-                                                  trimmed_crimes['Primary Type'])
-    violent_crimes = trimmed_crimes[trimmed_crimes['Primary Type'] == "1"]
-
-    # Create a mapping from community area names to dataframes
-    areas_with_crimes = violent_crimes.groupby('Community Area')
-    crimes_by_area = {}
-    with open('config/community_areas.csv', 'rb') as area_file:
-        area_dict = {}
-        reader = csv.reader(area_file)
+# Function to bin crimes using mappings from a file.
+def bin_from_csv(csv_name, series_to_bin):
+    with open(csv_name, 'rb') as bin_file:
+        unbinned_to_binned = {}
+        reader = csv.reader(bin_file)
         for line in reader:
-            area_dict[int(line[0])] = line[1]
-        for name, group in areas_with_crimes:
-            # Only include valid community area numbers
-            if int(name) in range(1, 78):
-                crimes_by_area[area_dict[int(name)]] = group
+            unbinned_to_binned[line[0]] = line[1]
 
-    # Create mapping from community area names
-    # to average number of violent crimes per day
-    avg_crimes_by_area = {}
-    num_days = days_since_2001(end_date)
-    for area in crimes_by_area:
-        avg_crimes_by_area[area] = len(crimes_by_area[area].index)/num_days
+    return series_to_bin.map(lambda unbinned: unbinned_to_binned[unbinned])
 
-    # Write neighborhood to crime/day mapping to csv
-    with open('config/baseline.csv', 'wb') as baseline_file:
-        writer = csv.writer(baseline_file)
-        for area in avg_crimes_by_area:
-            writer.writerow([area, avg_crimes_by_area[area]])
-        baseline_file.close()
+# Function to bin crimes using the previous function and the specific mapping
+# file we created.
+def bin_crimes(series):
+    return bin_from_csv('../config/crime_bins.csv', series)
 
+# Function to reindex the data using the date column converted to an actual date
+# format.
+def reindex_by_date(data_frame):
+    data_frame.index = pd.to_datetime(data_frame['Date'])
 
-def days_since_2001(end_date):
-    start_date = date(2001, 1, 1)
-    delta = end_date - start_date
-    return delta.days
+# Read in the crimes
+raw_crimes = pd.read_csv('../data/crimeSample.csv')
+
+# Get relevant features for the baseline
+relevant_columns = ['Primary Type', 'Community Area', 'Date']
+trimmed_crimes = raw_crimes.reindex(columns=relevant_columns)
+
+# Bin crimes based on severity
+trimmed_crimes['Primary Type'] = bin_crimes(raw_crimes['Primary Type'])
+
+# Extract only the violent crimes, and delete the type column as it is no longer
+# necessary
+violent_crimes = trimmed_crimes[trimmed_crimes['Primary Type'] == "Violent"]
+del violent_crimes['Primary Type']
+
+# Reindex our data using the date, and delete the extraneous date column
+reindex_by_date(violent_crimes)
+del violent_crimes['Date']
+
+# Group violent crimes by area, and resample by summing the crimes each day in
+# each area
+violent_crimes['Crimes'] = 1
+grouped_violent = violent_crimes.groupby('Community Area')
+violent_crimes_by_location = {}
+for location, data_for_location in grouped_violent:
+    violent_crimes_by_location[location] = data_for_location.resample('D', how='sum')
+    del violent_crimes_by_location[location]['Community Area']
+
+# Convert number of crimes per day into boolean: presence of crimes per day
+for location in violent_crimes_by_location:
+    violent_crimes_by_location[location]['Crime?'] = violent_crimes_by_location[location]['Crimes'].map(lambda num_crimes: num_crimes > 0)
+    del violent_crimes_by_location[location]['Crimes']
+
+# Generate a baseline object that calculates the cuont of days with crime versus
+# total number of days
+baseline = {}
+for location in range(1,78):
+    df = violent_crimes_by_location[location]
+    total_days = len(df.index)
+    days_with_crime = len(df[df['Crime?'] == True])
+    baseline[str(location)] = days_with_crime / total_days
+
+# Write the new baseline to a file
+writer = csv.writer(open('../config/new_baseline.csv', 'w'))
+for key in baseline:
+    writer.writerow([key, str(baseline[key])])
