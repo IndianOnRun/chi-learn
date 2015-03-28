@@ -22,9 +22,17 @@ class TrainingSetFactory:
 
     def get_feature_vectors(self):
         area_to_daily_crimes = self.get_daily_crimes_by_area()
-        pan_chicago_daily_crimes = DailyCrimesFactory(self.crimes).crimes
+        pan_chicago_daily_crimes = DailyCrimesFactory(self.data_frame).crimes
         concatenated_crimes_by_area = self.concat_city_with_areas(pan_chicago_daily_crimes, area_to_daily_crimes)
         return self.extract_features_from_data_frame(concatenated_crimes_by_area)
+
+    def get_daily_crimes_by_area(self):
+        area_to_daily_crimes = {}
+        grouped = self.data_frame.groupby('Community Area')
+        for name, frame in grouped:
+            area_crimes = DailyCrimesFactory(frame, include_time_features=True).crimes
+            area_to_daily_crimes[name] = area_crimes
+        return area_to_daily_crimes
 
     @staticmethod
     def extract_features_from_data_frame(crimes_by_area):
@@ -56,23 +64,14 @@ class TrainingSetFactory:
         self.data_frame.index = pd.to_datetime(self.data_frame['Date'])
         self.data_frame.drop('Date', 1, inplace=True)
 
-    def get_daily_crimes_by_area(self):
-        area_to_daily_crimes = {}
-        grouped = self.data_frame.groupby('Community Area')
-        for name, frame in grouped:
-            area_crimes = DailyCrimesFactory(frame, include_time_features=True).crimes
-            area_to_daily_crimes[name] = area_crimes
-        return area_to_daily_crimes
-
     @staticmethod
     def concat_city_with_areas(pan_chicago_crimes, crimes_by_area):
-        column_names = list(pan_chicago_crimes)
+        new_column_names = ['Chicago ' + old_name for old_name in list(pan_chicago_crimes)]
+        pan_chicago_crimes.columns = new_column_names
         concatenated_crimes_by_area = {}
         for area in crimes_by_area:
             area_crimes = crimes_by_area[area]
-            for col in column_names:
-                area_crimes['Chicago ' + col] = pan_chicago_crimes[col]
-            concatenated_crimes_by_area[area] = area_crimes
+            concatenated_crimes_by_area[area] = area_crimes.join(pan_chicago_crimes)
         return concatenated_crimes_by_area
 
 
@@ -131,6 +130,7 @@ class DailyCrimesFactory:
                 pd.rolling_sum(self.crimes[severity + ' Crimes'], 7)
             self.crimes[severity + ' Crimes in Last Month'] = \
                 pd.rolling_sum(self.crimes[severity + ' Crimes'], 30)
+
 
 def make_cols_categorical(data_frame, col_names):
         for name in col_names:
