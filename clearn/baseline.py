@@ -1,7 +1,8 @@
 from __future__ import division
 import csv
+
 import pandas as pd
-import time
+
 
 # Function to bin crimes using mappings from a file.
 def bin_from_csv(csv_name, series_to_bin):
@@ -13,10 +14,12 @@ def bin_from_csv(csv_name, series_to_bin):
 
     return series_to_bin.map(lambda unbinned: unbinned_to_binned[unbinned])
 
+
 # Function to bin crimes using the previous function and the specific mapping
 # file we created.
 def bin_crimes(series):
     return bin_from_csv('../config/crime_bins.csv', series)
+
 
 # Function to reindex the data using the date column converted to an actual date
 # format.
@@ -53,13 +56,14 @@ for location, data_for_location in grouped_violent:
 
 # Convert number of crimes per day into boolean: presence of crimes per day
 for location in violent_crimes_by_location:
-    violent_crimes_by_location[location]['Crime?'] = violent_crimes_by_location[location]['Crimes'].map(lambda num_crimes: num_crimes > 0)
+    violent_crimes_by_location[location]['Crime?'] = violent_crimes_by_location[location]['Crimes'].map(
+        lambda num_crimes: num_crimes > 0)
     del violent_crimes_by_location[location]['Crimes']
 
-# Generate a baseline object that calculates the cuont of days with crime versus
+# Generate a baseline object that calculates the count of days with crime versus
 # total number of days
 baseline = {}
-for location in range(1,78):
+for location in range(1, 78):
     df = violent_crimes_by_location[location]
     total_days = len(df.index)
     days_with_crime = len(df[df['Crime?'] == True])
