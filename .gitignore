@@ -58,3 +58,5 @@ target/
 
 # Ignore any virtual environments
 venv/
+
+notebooks/.ipynb_checkpoints
