@@ -15,9 +15,9 @@ def make_clean_timestamps(data_frame):
     data_frame = drop_all_columns_but(data_frame, ['Date', 'Primary Type', 'Community Area', 'Arrest', 'Domestic'])
     data_frame = convert_comm_area_nums_to_names(data_frame)
     data_frame = transform_from_csv(data_frame, 'Primary Type', '../config/crime_bins.csv')
-    data_frame = reindex_by_date(data_frame)
-    data_frame = make_cols_categorical(data_frame, ['Primary Type', 'Community Area'])
-    return data_frame
+    timestamps = reindex_by_date(data_frame)
+    timestamps = make_cols_categorical(timestamps, ['Primary Type', 'Community Area'])
+    return timestamps
 
 
 def drop_all_columns_but(data_frame, columns):
@@ -34,24 +34,25 @@ def convert_comm_area_nums_to_names(data_frame):
 
 
 def transform_from_csv(data_frame, col_name, csv_name):
-        with open(csv_name, 'rb') as bin_file:
-            unbinned_to_binned = {}
-            reader = csv.reader(bin_file)
-            for line in reader:
-                unbinned_to_binned[line[0]] = line[1]
+    with open(csv_name, 'rb') as bin_file:
+        unbinned_to_binned = {}
+        reader = csv.reader(bin_file)
+        for line in reader:
+            unbinned_to_binned[line[0]] = line[1]
 
-        return data_frame[col_name].map(lambda unbinned: unbinned_to_binned[unbinned])
+    data_frame[col_name] = data_frame[col_name].map(lambda unbinned: unbinned_to_binned[unbinned])
+    return data_frame
 
 
 def reindex_by_date(data_frame):
-        data_frame.index = pd.to_datetime(data_frame['Date'])
-        return data_frame.drop('Date', 1)
+    data_frame.index = pd.to_datetime(data_frame['Date'])
+    return data_frame.drop('Date', 1)
 
 
 def make_cols_categorical(data_frame, col_names):
-        for name in col_names:
-            data_frame[name] = data_frame[name].astype('category')
-        return data_frame
+    for name in col_names:
+        data_frame[name] = data_frame[name].astype('category')
+    return data_frame
 
 
 """ Used in make_target_vectors()"""
