@@ -3,10 +3,10 @@ import csv
 
 
 # TODO: Drop examples with missing data because of moving window function
-def make_training_set(data_csv_path):
+def make_training_set(data_csv_path, raw=True):
     data_frame = pd.read_csv(data_csv_path)
     timestamps = make_clean_timestamps(data_frame)
-    return make_target_vectors(timestamps), make_feature_vectors(timestamps, raw=True)
+    return make_target_vectors(timestamps, raw=raw), make_feature_vectors(timestamps, raw=raw)
 
 
 """ Used in make_clean_timestamps() """
@@ -26,10 +26,17 @@ def drop_all_columns_but(data_frame, columns):
 
 
 def convert_comm_area_nums_to_names(data_frame):
+    # Replace floats with ints. If no translation, mark it as 0 (an invalid community number)
+    def clean_comm_area_value(val):
+        try:
+            return int(val)
+        except ValueError:
+            return 0
+    data_frame['Community Area'] = data_frame['Community Area'].map(clean_comm_area_value)
     # Remove rows with invalid community area numbers
     data_frame = data_frame[data_frame['Community Area'] > 0]
     # Convert numbers to strings for easy binning
-    data_frame['Community Area'] = data_frame['Community Area'].map(lambda num: str(num))
+    data_frame['Community Area'] = data_frame['Community Area'].map(lambda num: str(int(num)))
     data_frame = transform_from_csv(data_frame, 'Community Area', '../config/community_areas.csv')
     return data_frame
 
@@ -59,7 +66,7 @@ def make_cols_categorical(data_frame, col_names):
 """ Used in make_target_vectors()"""
 
 
-def make_target_vectors(timestamps):
+def make_target_vectors(timestamps, raw=True):
     timestamps = timestamps[timestamps['Primary Type'] == 'Violent']
     # Add a new column that we'll use to sum crimes per day
     timestamps['Violent Crime'] = 1
@@ -70,18 +77,24 @@ def make_target_vectors(timestamps):
         area_crimes = frame.resample('D', how='sum')
         # Create new column that is true iff at least one violent crime was committed that day
         area_crimes['Violent Crime Committed'] = area_crimes['Violent Crime'].map(lambda num_crimes: num_crimes > 0)
-        # Store the raw True/False values in the target vector
-        targets[name] = area_crimes['Violent Crime Committed'].values
+        # area_crimes = area_crimes[30:]
+        if raw:
+            # Store the raw True/False values in the target vector
+            targets[name] = area_crimes['Violent Crime Committed'].values
+        else:
+            # Store the entire dataframe for debugging
+            targets[name] = area_crimes.fillna(0)
     return targets
 
 
 """ Used in make_feature_vectors() """
 
 
-def make_feature_vectors(timestamps, raw=False):
+def make_feature_vectors(timestamps, raw=True):
     days_by_area = get_days_by_area(timestamps)
     days_pan_city = make_series_of_days_from_timestamps(timestamps)
     concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
+    concatenated_days_by_area = fill_missing_values(concatenated_days_by_area)
     if raw:
         concatenated_days_by_area = extract_features_from_data_frame(concatenated_days_by_area)
     return concatenated_days_by_area
@@ -112,6 +125,13 @@ def extract_features_from_data_frame(crimes_by_area):
         feature_vectors_by_area[area] = crimes_by_area[area].values
     return feature_vectors_by_area
 
+
+def fill_missing_values(concatenated_days_by_area):
+    for area in concatenated_days_by_area:
+        pass#concatenated_days_by_area[area] = concatenated_days_by_area[area].fillna(0)
+    return concatenated_days_by_area
+
+
 """ Used in make_series_of_days_from_timestamps() """
 
 
@@ -132,6 +152,7 @@ def extract_severity_counts(timestamps):
 
 def resample_by_day(timestamps):
     days = timestamps.resample('D', how='sum')
+    days = days.fillna(0)
     return days
 
 
@@ -146,4 +167,5 @@ def extract_windows(days):
     for label in ['Violent', 'Severe', 'Minor', 'Petty']:
         days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
         days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
+        # days = days[30:]
     return days
