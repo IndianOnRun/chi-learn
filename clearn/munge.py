@@ -2,10 +2,11 @@ import pandas as pd
 import csv
 
 
+# TODO: Drop examples with missing data because of moving window function
 def make_training_set(data_csv_path):
     data_frame = pd.read_csv(data_csv_path)
-    clean_timestamps = make_clean_timestamps(data_frame)
-    return make_target_vectors(clean_timestamps), make_feature_vectors(clean_timestamps)
+    timestamps = make_clean_timestamps(data_frame)
+    return make_target_vectors(timestamps), make_feature_vectors(timestamps, raw=True)
 
 
 """ Used in make_clean_timestamps() """
@@ -77,10 +78,13 @@ def make_target_vectors(timestamps):
 """ Used in make_feature_vectors() """
 
 
-def make_feature_vectors(timestamps):
+def make_feature_vectors(timestamps, raw=False):
     days_by_area = get_days_by_area(timestamps)
     days_pan_city = make_series_of_days_from_timestamps(timestamps)
-    return concat_areas_with_city(days_pan_city, days_by_area)
+    concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
+    if raw:
+        concatenated_days_by_area = extract_features_from_data_frame(concatenated_days_by_area)
+    return concatenated_days_by_area
 
 
 def get_days_by_area(timestamps):
@@ -101,6 +105,12 @@ def concat_areas_with_city(days_pan_city, days_by_area):
         concatenated_days_by_area[area] = area_days.join(days_pan_city)
     return concatenated_days_by_area
 
+
+def extract_features_from_data_frame(crimes_by_area):
+    feature_vectors_by_area = {}
+    for area in crimes_by_area:
+        feature_vectors_by_area[area] = crimes_by_area[area].values
+    return feature_vectors_by_area
 
 """ Used in make_series_of_days_from_timestamps() """
 
@@ -126,10 +136,9 @@ def resample_by_day(timestamps):
 
 
 def extract_time_features(days):
-    days['Year'] = days.index.map(lambda stamp: stamp.year)
     days['Month'] = days.index.map(lambda stamp: stamp.month)
     days['Weekday'] = days.index.map(lambda stamp: stamp.weekday())
-    days = make_cols_categorical(days, ['Year', 'Month', 'Weekday'])
+    days = make_cols_categorical(days, ['Month', 'Weekday'])
     return days
 
 
