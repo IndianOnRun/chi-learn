@@ -4,12 +4,6 @@ import csv
 import pandas as pd
 import munge
 
-
-# Function to reindex the data using the date column converted to an actual date
-# format.
-def reindex_by_date(data_frame):
-    data_frame.index = pd.to_datetime(data_frame['Date'])
-
 # Read in the crimes
 raw_crimes = pd.read_csv('../data/crimeSample.csv')
 
