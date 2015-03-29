@@ -2,23 +2,7 @@ from __future__ import division
 import csv
 
 import pandas as pd
-
-
-# Function to bin crimes using mappings from a file.
-def bin_from_csv(csv_name, series_to_bin):
-    with open(csv_name, 'rb') as bin_file:
-        unbinned_to_binned = {}
-        reader = csv.reader(bin_file)
-        for line in reader:
-            unbinned_to_binned[line[0]] = line[1]
-
-    return series_to_bin.map(lambda unbinned: unbinned_to_binned[unbinned])
-
-
-# Function to bin crimes using the previous function and the specific mapping
-# file we created.
-def bin_crimes(series):
-    return bin_from_csv('../config/crime_bins.csv', series)
+import munge
 
 
 # Function to reindex the data using the date column converted to an actual date
@@ -30,11 +14,10 @@ def reindex_by_date(data_frame):
 raw_crimes = pd.read_csv('../data/crimeSample.csv')
 
 # Get relevant features for the baseline
-relevant_columns = ['Primary Type', 'Community Area', 'Date']
-trimmed_crimes = raw_crimes.reindex(columns=relevant_columns)
+trimmed_crimes = munge.drop_all_columns_but(raw_crimes, ['Primary Type', 'Community Area', 'Date'])
 
 # Bin crimes based on severity
-trimmed_crimes['Primary Type'] = bin_crimes(raw_crimes['Primary Type'])
+trimmed_crimes['Primary Type'] = munge.transform_from_csv(trimmed_crimes, 'Primary Type', '../config/crime_bins.csv')
 
 # Extract only the violent crimes, and delete the type column as it is no longer
 # necessary
@@ -42,8 +25,7 @@ violent_crimes = trimmed_crimes[trimmed_crimes['Primary Type'] == "Violent"]
 del violent_crimes['Primary Type']
 
 # Reindex our data using the date, and delete the extraneous date column
-reindex_by_date(violent_crimes)
-del violent_crimes['Date']
+violent_crimes = munge.reindex_by_date(violent_crimes)
 
 # Group violent crimes by area, and resample by summing the crimes each day in
 # each area
