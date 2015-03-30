@@ -1,7 +1,7 @@
 import csv
 
 import pandas as pd
-import munge
+from . import munge
 
 # Read in the crimes
 raw_crimes = pd.read_csv('../data/crimeSample.csv')
