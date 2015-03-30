@@ -2,11 +2,25 @@ import pandas as pd
 import csv
 
 
-# TODO: Drop examples with missing data because of moving window function
-def make_training_set(data_csv_path, raw=True):
+def make_raw_data_target_pairs(data_csv_path):
+    frames_by_area = make_training_set(data_csv_path)
+    pairs = {}
+    for area in frames_by_area:
+        # Chop off the first target value (was a violent crime committed today?)
+        # and the last feature vector
+        # so that day x's feature value is aligned with day x+1's classification
+        frame = frames_by_area[area]
+        raw_targets = frame['Violent Crime Committed?'][1:]
+        del frame['Violent Crime Committed?']
+        raw_data = frame.values[:-1]
+        pairs[area] = (raw_data, raw_targets)
+    return pairs
+
+
+def make_training_set(data_csv_path):
     data_frame = pd.read_csv(data_csv_path)
     timestamps = make_clean_timestamps(data_frame)
-    return make_target_vectors(timestamps, raw=raw), make_feature_vectors(timestamps, raw=raw)
+    return make_feature_vectors(timestamps)
 
 
 """ Used in make_clean_timestamps() """
@@ -63,40 +77,14 @@ def make_cols_categorical(data_frame, col_names):
     return data_frame
 
 
-""" Used in make_target_vectors()"""
-
-
-def make_target_vectors(timestamps, raw=True):
-    timestamps = timestamps[timestamps['Primary Type'] == 'Violent']
-    # Add a new column that we'll use to sum crimes per day
-    timestamps['Violent Crime'] = 1
-    grouped = timestamps.groupby('Community Area')
-    targets = {}
-    for name, frame in grouped:
-        # Make one row per day
-        area_crimes = frame.resample('D', how='sum')
-        # Create new column that is true iff at least one violent crime was committed that day
-        area_crimes['Violent Crime Committed'] = area_crimes['Violent Crime'].map(lambda num_crimes: num_crimes > 0)
-        # area_crimes = area_crimes[30:]
-        if raw:
-            # Store the raw True/False values in the target vector
-            targets[name] = area_crimes['Violent Crime Committed'].values
-        else:
-            # Store the entire dataframe for debugging
-            targets[name] = area_crimes.fillna(0)
-    return targets
-
-
 """ Used in make_feature_vectors() """
 
 
-def make_feature_vectors(timestamps, raw=True):
+def make_feature_vectors(timestamps):
     days_by_area = get_days_by_area(timestamps)
     days_pan_city = make_series_of_days_from_timestamps(timestamps)
     concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
-    concatenated_days_by_area = fill_missing_values(concatenated_days_by_area)
-    if raw:
-        concatenated_days_by_area = extract_features_from_data_frame(concatenated_days_by_area)
+    concatenated_days_by_area = remove_days_without_rolling_sum(concatenated_days_by_area)
     return concatenated_days_by_area
 
 
@@ -105,6 +93,7 @@ def get_days_by_area(timestamps):
     grouped = timestamps.groupby('Community Area')
     for name, frame in grouped:
         area_days = make_series_of_days_from_timestamps(frame, include_time_features=True)
+        area_days['Violent Crime Committed?'] = area_days['Violent Crimes'].map(lambda num_crimes: num_crimes > 0)
         days_by_area[name] = area_days
     return days_by_area
 
@@ -126,9 +115,9 @@ def extract_features_from_data_frame(crimes_by_area):
     return feature_vectors_by_area
 
 
-def fill_missing_values(concatenated_days_by_area):
+def remove_days_without_rolling_sum(concatenated_days_by_area):
     for area in concatenated_days_by_area:
-        pass#concatenated_days_by_area[area] = concatenated_days_by_area[area].fillna(0)
+        concatenated_days_by_area[area] = concatenated_days_by_area[area][30:]
     return concatenated_days_by_area
 
 
@@ -167,5 +156,4 @@ def extract_windows(days):
     for label in ['Violent', 'Severe', 'Minor', 'Petty']:
         days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
         days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
-        # days = days[30:]
     return days
