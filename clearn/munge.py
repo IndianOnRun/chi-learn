@@ -56,9 +56,9 @@ def convert_comm_area_nums_to_names(data_frame):
 
 
 def transform_from_csv(data_frame, col_name, csv_name):
-    with open(csv_name, 'rb') as bin_file:
+    with open(csv_name, 'r') as file:
         unbinned_to_binned = {}
-        reader = csv.reader(bin_file)
+        reader = csv.reader(file)
         for line in reader:
             unbinned_to_binned[line[0]] = line[1]
 
