@@ -1,6 +1,7 @@
 import pandas as pd
 import csv
 
+USE_CONVOLUTION = True
 
 def make_raw_data_target_pairs(data_csv_path):
     frames_by_area = make_training_set(data_csv_path)
@@ -85,8 +86,12 @@ def make_feature_vectors(timestamps):
     days_pan_city = make_series_of_days_from_timestamps(timestamps)
     concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
     concatenated_days_by_area = remove_days_without_rolling_sum(concatenated_days_by_area)
-    return concatenated_days_by_area
+    # Do the convolution here, using concatenated_days_by_area as our
+    # data
+    if USE_CONVOLUTION:
+        concatenated_days_by_area = convolve_by_neighbor(concatenated_days_by_area)
 
+    return concatenated_days_by_area
 
 def get_days_by_area(timestamps):
     days_by_area = {}
@@ -120,6 +125,46 @@ def remove_days_without_rolling_sum(concatenated_days_by_area):
         concatenated_days_by_area[area] = concatenated_days_by_area[area][30:]
     return concatenated_days_by_area
 
+def convolve_by_neighbor(concatenated_days_by_area):
+    neighbors_of_area = read_in_neighbors_csv('../config/community_area_neighbors.csv')
+
+    for area in concatenated_days_by_area:
+        convolution, convolution_week, convolution_month = generate_convolved_columns(concatenated_days_by_area, area, neighbors_of_area)
+
+        dataframe = concatenated_days_by_area[area]
+
+        # Add these columns to our data
+        dataframe['Violent Crimes in Neighbors'] = convolution
+        dataframe['Violent Crimes in Neighbors in Last Week'] = convolution_week
+        dataframe['Violent Crimes in Neighbors in Last Month'] = convolution_month
+
+    return concatenated_days_by_area
+
+def read_in_neighbors_csv(pathname):
+    neighbors_of_area = {}
+
+    with open(pathname, 'r') as neighbor_file:
+        reader = csv.reader(neighbor_file)
+        for line in reader:
+            neighbors_of_area[line[0]] = line[1:]
+
+    return neighbors_of_area
+
+def generate_convolved_columns(dataframes, area, neighbors_of_area):
+    list_of_neighbors_for_area = neighbors_of_area[area]
+
+    # Initialize our column to be the violent crimes in this area 
+    convolution = dataframes[area]['Violent Crimes']
+    convolution_week = dataframes[area]['Violent Crimes in Last Week']
+    convolution_month = dataframes[area]['Violent Crimes in Last Month']
+
+    # Go through all of the neighbors, and add their sets of violent crimes to our totals
+    for actual_neighbor in list_of_neighbors_for_area:
+        convolution = convolution + dataframes[actual_neighbor]['Violent Crimes']
+        convolution_week = convolution_week + dataframes[actual_neighbor]['Violent Crimes in Last Week']
+        convolution_month = convolution_month + dataframes[actual_neighbor]['Violent Crimes in Last Month']
+
+    return [convolution, convolution_week, convolution_month]
 
 """ Used in make_series_of_days_from_timestamps() """
 
