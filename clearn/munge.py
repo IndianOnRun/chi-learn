@@ -1,10 +1,8 @@
 import pandas as pd
 import csv
 
-USE_CONVOLUTION = True
-
-def make_raw_data_target_pairs(data_csv_path):
-    frames_by_area = make_training_set(data_csv_path)
+def make_raw_data_target_pairs(data_csv_path, use_convolution=True):
+    frames_by_area = make_training_set(data_csv_path, use_convolution)
     pairs = {}
     for area in frames_by_area:
         # Chop off the first target value (was a violent crime committed today?)
@@ -18,10 +16,10 @@ def make_raw_data_target_pairs(data_csv_path):
     return pairs
 
 
-def make_training_set(data_csv_path):
+def make_training_set(data_csv_path, use_convolution):
     data_frame = pd.read_csv(data_csv_path)
     timestamps = make_clean_timestamps(data_frame)
-    return make_feature_vectors(timestamps)
+    return make_feature_vectors(timestamps, use_convolution)
 
 
 """ Used in make_clean_timestamps() """
@@ -81,14 +79,14 @@ def make_cols_categorical(data_frame, col_names):
 """ Used in make_feature_vectors() """
 
 
-def make_feature_vectors(timestamps):
+def make_feature_vectors(timestamps, use_convolution):
     days_by_area = get_days_by_area(timestamps)
     days_pan_city = make_series_of_days_from_timestamps(timestamps)
     concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
     concatenated_days_by_area = remove_days_without_rolling_sum(concatenated_days_by_area)
     # Do the convolution here, using concatenated_days_by_area as our
     # data
-    if USE_CONVOLUTION:
+    if use_convolution:
         concatenated_days_by_area = convolve_by_neighbor(concatenated_days_by_area)
 
     return concatenated_days_by_area
