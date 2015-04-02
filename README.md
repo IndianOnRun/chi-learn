@@ -14,10 +14,14 @@ Run with Python 3.4. Make sure you have pandas and scikit-learn installed. Ipyth
 + Activate your virtual environment: `source env/bin/activate`
 + Clone this repo.
 + From the chi-learn directory, install dependencies in your virtual environment with pip: `pip install -r requirements.txt`
-+ You may want to download the most recent full dataset [from Chicago's data portal](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2). Choose "export as CSV" and save it in /data.
+
+## Data
+To download the most recent full dataset, visit [Chicago's data portal](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2). Choose "export as CSV" and save it in /data.
 
 ## Dependencies
 We're using pandas and scikit-learn. Check out requirements.txt for specific versions.
 
 ## Origins
-Chi-learn is Will Engler, Kevin Minkus, and Joel Roggeman's term project for Pitt CS 1675 (Machine Learning) Spring 2015 with Dr. Rebecca Hwa.
+Chi-learn's backend is Will Engler, Kevin Minkus, and Joel Roggeman's term project for Pitt CS 1675 (Machine Learning) Spring 2015 with [Dr. Rebecca Hwa](http://people.cs.pitt.edu/~hwa/).
+
+Chi-learn's frontend is Will Engler and Joel Roggeman's term project for Pitt CS 1699 (Software Testing) Spring 2015 with [Bill Laboon](https://github.com/laboon).
