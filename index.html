@@ -2,15 +2,15 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>D3: Setting path fills dynamically to generate a choropleth</title>
-		<script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
-
-			<style type="text/css">
-
-			path:hover {
-				fill: orange;
-			}
-		</style>
+		<title>Proportion of Days with Violent Crime in Chicago Neighborhoods</title>
+        <!-- JQuery -->
+        <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+        <!-- Bootstrap -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+		<!-- D3 JS -->
+        <script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
 	</head>
 	<body>
         <!-- Bring in the numToArea object that maps from community area numbers to names -->
@@ -20,56 +20,72 @@
 
 			//Width and height
 			var w = 500;
-			var h = 650;
+			var h = 500;
 
-			//Create SVG element
+			// Create an SVG element that will hold our map
 			var svg = d3.select("body")
 						.append("svg")
 						.attr("width", w)
 						.attr("height", h);
 
-            //Define quantize scale to sort data values into buckets of color
+            // Define quantize scale to sort data values into buckets of color
 			var color = d3.scale.quantize()
+                                // These are shades of green used in a D3 book. They look nice.
 								.range(["rgb(237,248,233)",
                                         "rgb(186,228,179)",
                                         "rgb(116,196,118)",
                                         "rgb(49,163,84)",
                                         "rgb(0,109,44)"])
+                                // We are representing probabilities
                                 .domain([0,1]);
 
-
-            //Load in GeoJSON data
+            // Load in GeoJSON data
             d3.json("viewer/json/commAreasGeo.json", function(geoJson) {
 
+                // D3 can only bind one datum to a DOM element at a time,
+                // so we need to combine the GeoJSON data and the crime data
                 for (var index in geoJson.features) {
                     area = geoJson.features[index];
                     geoJson.features[index].name = numToAreaName[area.area_number];
                     geoJson.features[index].crimeRate = areaNumToCrimeRate[area.area_number]
                 }
 
-
-                // new projection
+                // Create a view that is more or less centered on Chicago
                 var projection = d3.geo.mercator().scale([243300])
                         .center([-87.68398142305401, 41.92394041])
                         .translate([250.02673254274777, 174.99268431711602]);
 
+                // Construct a path function that will convert GeoJSON coordinates to SVG
                 var path = d3.geo.path().projection(projection);
 
-
                 svg.selectAll("path")
-                        .data(geoJson.features)
-                        .enter()
-                        .append("path")
-                        .attr("d", path)
-                        .style("fill", function(d){
-                            return color(d.crimeRate)
-                        })
-                        .style("stroke-width", "1")
-                                .style("stroke", "black")
-                                .append("title")
-                                .text(function(d){
-                                    return d.name
-                                })
+                    .data(geoJson.features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .style("fill", function(d){
+                        return color(d.crimeRate)
+                    })
+
+                    // Add a black border to each community area
+                    .style("stroke-width", "1")
+                    .style("stroke", "black")
+
+                    // On hover, highlight community are
+                    .on("mouseover", function() {
+                        d3.select(this)
+                        .attr("opacity", .5);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this)
+                        .attr("opacity", 1);
+                    })
+
+                    // Add tooltip with community area's name
+                    .append("title")
+                    .text(function(d){
+                        return d.name
+                    });
 
             });
 
