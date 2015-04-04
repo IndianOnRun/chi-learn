@@ -7,23 +7,85 @@
         <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
         <!-- Bootstrap -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" src="viewer/css/bootstrap.css">
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 		<!-- D3 JS -->
         <script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
 	</head>
 	<body>
+    <div class="container">
+        <nav class="navbar navbar-default">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                            aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">Chi-Learn</a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#">Home</a></li>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                               aria-expanded="false">Dropdown <span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li><a href="#">Action</a></li>
+                                <li><a href="#">Another action</a></li>
+                                <li><a href="#">Something else here</a></li>
+                                <li class="divider"></li>
+                                <li class="dropdown-header">Nav header</li>
+                                <li><a href="#">Separated link</a></li>
+                                <li><a href="#">One more separated link</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav navbar-right">
+                        <li class="active"><a href="./">Default <span class="sr-only">(current)</span></a></li>
+                        <li><a href="../navbar-static-top/">Static top</a></li>
+                        <li><a href="../navbar-fixed-top/">Fixed top</a></li>
+                    </ul>
+                </div>
+                <!--/.nav-collapse -->
+            </div>
+            <!--/.container-fluid -->
+        </nav>
+        <!--
+         <div class="jumbotron">
+
+       </div>
+       -->
+        <div class="row">
+            <div id="chloropleth" class="col-md-6"></div>
+            <div id="key" class="col-md-6">
+                <h1>Chicago: Violent Crime by Community Area</h1>
+                <p> For each
+                    <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>,
+                    this map shows the proportion of days where a violent crime was committed.
+                    Darker colors mean more days with crime.
+                </p>
+                <p>
+                    Click on a community area to see more detail.
+                </p>
+            </div>
+        </div>
+    </div>
         <!-- Bring in the numToArea object that maps from community area numbers to names -->
         <script src="viewer/js/number_to_community_area.js"></script>
         <script src="viewer/js/baseline.js"></script>
 		<script type="text/javascript">
 
 			//Width and height
-			var w = 500;
-			var h = 500;
+			var w = 600;
+			var h = 600;
 
 			// Create an SVG element that will hold our map
-			var svg = d3.select("body")
+			var svg = d3.select("#chloropleth")
 						.append("svg")
 						.attr("width", w)
 						.attr("height", h);
@@ -51,7 +113,7 @@
                 }
 
                 // Create a view that is more or less centered on Chicago
-                var projection = d3.geo.mercator().scale([243300])
+                var projection = d3.geo.mercator().scale([343300])
                         .center([-87.68398142305401, 41.92394041])
                         .translate([250.02673254274777, 174.99268431711602]);
 
