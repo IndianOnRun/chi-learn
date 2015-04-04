@@ -4,8 +4,12 @@
 		<meta charset="utf-8">
 		<title>D3: Setting path fills dynamically to generate a choropleth</title>
 		<script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
-		<style type="text/css">
-			/* No style rules here yet */		
+
+			<style type="text/css">
+
+			path:hover {
+				fill: orange;
+			}
 		</style>
 	</head>
 	<body>
@@ -24,13 +28,23 @@
 						.attr("width", w)
 						.attr("height", h);
 
-			//Load in GeoJSON data
-			d3.json("viewer/json/communityAreasGeo.json", function(geoJson) {
+            //Define quantize scale to sort data values into buckets of color
+			var color = d3.scale.quantize()
+								.range(["rgb(237,248,233)",
+                                        "rgb(186,228,179)",
+                                        "rgb(116,196,118)",
+                                        "rgb(49,163,84)",
+                                        "rgb(0,109,44)"])
+                                .domain([0,1]);
 
-            for (var areaNum in geoJson.features) {
-                    console.log(geoJson.features.length)
-                    geoJson.features[areaNum].name = numToArea[areaNum]
-                    geoJson.features[areaNum].crimeRate = areaNumToCrimeRate[areaNum]
+
+            //Load in GeoJSON data
+            d3.json("viewer/json/commAreasGeo.json", function(geoJson) {
+
+                for (var index in geoJson.features) {
+                    area = geoJson.features[index];
+                    geoJson.features[index].name = numToAreaName[area.area_number];
+                    geoJson.features[index].crimeRate = areaNumToCrimeRate[area.area_number]
                 }
 
 
@@ -48,29 +62,17 @@
                         .append("path")
                         .attr("d", path)
                         .style("fill", function(d){
-                            console.log(d);
-                            return "red"
+                            return color(d.crimeRate)
                         })
                         .style("stroke-width", "1")
-                        .style("stroke", "black")
+                                .style("stroke", "black")
+                                .append("title")
+                                .text(function(d){
+                                    return d.name
+                                })
 
             });
 
-
-
-
-                    //json.features maps from the community numbers to svg data
-
-
-                    // Load in baseline crime percentages
-                    //Create mapping from numbers to community areas
-
-
-
-
-
-
-			
 		</script>
 	</body>
 </html>
