@@ -9,6 +9,9 @@
 		</style>
 	</head>
 	<body>
+        <!-- Bring in the numToArea object that maps from community area numbers to names -->
+        <script src="viewer/js/number_to_community_area.js"></script>
+        <script src="viewer/js/baseline.js"></script>
 		<script type="text/javascript">
 
 			//Width and height
@@ -22,30 +25,51 @@
 						.attr("height", h);
 
 			//Load in GeoJSON data
-			d3.json("json/communityAreasGeo.json", function(json) {
+			d3.json("viewer/json/communityAreasGeo.json", function(geoJson) {
 
-                for (var areaName in json.features){
-                    console.log(areaName)
+            for (var areaNum in geoJson.features) {
+                    console.log(geoJson.features.length)
+                    geoJson.features[areaNum].name = numToArea[areaNum]
+                    geoJson.features[areaNum].crimeRate = areaNumToCrimeRate[areaNum]
                 }
+
 
                 // new projection
                 var projection = d3.geo.mercator().scale([243300])
-                        .center([-87.68398142305401,41.92394041])
+                        .center([-87.68398142305401, 41.92394041])
                         .translate([250.02673254274777, 174.99268431711602]);
 
                 var path = d3.geo.path().projection(projection);
 
 
                 svg.selectAll("path")
-                          .data(json.features)
-                          .enter()
-                          .append("path")
-                          .attr("d", path)
-                          .style("fill", "red")
-                          .style("stroke-width", "1")
-                          .style("stroke", "black")
-			
-			});
+                        .data(geoJson.features)
+                        .enter()
+                        .append("path")
+                        .attr("d", path)
+                        .style("fill", function(d){
+                            console.log(d);
+                            return "red"
+                        })
+                        .style("stroke-width", "1")
+                        .style("stroke", "black")
+
+            });
+
+
+
+
+                    //json.features maps from the community numbers to svg data
+
+
+                    // Load in baseline crime percentages
+                    //Create mapping from numbers to community areas
+
+
+
+
+
+
 			
 		</script>
 	</body>
