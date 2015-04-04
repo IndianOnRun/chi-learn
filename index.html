@@ -49,23 +49,20 @@
             </div>
             <!--/.container-fluid -->
         </nav>
-        <!--
-         <div class="jumbotron">
-
-       </div>
-       -->
         <div class="row">
             <div id="chloropleth" class="col-md-6"></div>
-            <div id="key" class="col-md-6">
+            <div id="detail" class="col-md-6">
                 <h1>Chicago: Violent Crime by Community Area</h1>
                 <p> For each
                     <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>,
-                    this map shows the proportion of days where a violent crime was committed.
+                    this map shows the proportion of days since January 1, 2001 where a violent crime was committed.
                     Darker colors mean more days with crime.
                 </p>
                 <p>
                     Click on a community area to see more detail.
                 </p>
+                <h2 id="clickedArea"></h2>
+                <p id="clickedMsg" hidden>Days with violent crime: <strong id="clickedRate"></strong>%</p></p>
             </div>
         </div>
     </div>
@@ -139,6 +136,11 @@
                     .on("mouseout", function() {
                         d3.select(this)
                         .attr("opacity", 1);
+                    })
+                    .on("click", function(d){
+                            $("#clickedArea").text(d.name);
+                            $("#clickedMsg").show();
+                            $("#clickedRate").text(Math.round(d.crimeRate*100));
                     })
 
                     // Add tooltip with community area's name
