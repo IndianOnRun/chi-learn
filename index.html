@@ -55,14 +55,18 @@
                         .center([-87.68398142305401, 41.92394041])
                         .translate([250.02673254274777, 174.99268431711602]);
 
-                // Construct a path function that will convert GeoJSON coordinates to SVG
-                var path = d3.geo.path().projection(projection);
+                // Construct a function that will convert GeoJSON coordinates to SVG path coordinates
+                var projectCoordinatesToSVG = d3.geo.path().projection(projection);
 
+                // Create an SVG path element for each datum
                 svg.selectAll("path")
                     .data(geoJson.features)
                     .enter()
                     .append("path")
-                    .attr("d", path)
+                    // The collision of lower-case d's is unfortunate.
+                    // d defines an attribute of SVG path elements that contain points along a path.
+                    // And by convention, d is used as a parameter in D3.js callbacks when referring to a datum that an element is bound to.
+                    .attr("d", projectCoordinatesToSVG)
                     .style("fill", function(d){
                         return color(d.crimeRate)
                     })
@@ -71,7 +75,7 @@
                     .style("stroke-width", "1")
                     .style("stroke", "black")
 
-                    // On hover, highlight community are
+                    // On hover, highlight community areas
                     .on("mouseover", function() {
                         d3.select(this)
                         .attr("opacity", .5);
