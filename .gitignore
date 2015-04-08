@@ -65,3 +65,6 @@ data/Crimes_-_2001_to_present.csv
 # Ignore iPython autosave data
 notebooks/.ipynb_checkpoints
 viewer/notebooks/.ipynb_checkpoints
+
+# Ignore pickled data
+*.pickle
