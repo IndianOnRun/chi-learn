@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Proportion of Days with Violent Crime in Chicago Neighborhoods</title>
+        <!-- JQuery -->
+        <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+        <!-- Bootstrap -->
+        <link rel="stylesheet" href="viewer/css/bootstrap.css"></link>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+		<!-- D3 JS -->
+        <script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
+	</head>
+	<body>
+    <div class="container">
+        <nav class="navbar navbar-default">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                            aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="#">Chi-Learn</a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="#">Home</a></li>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                               aria-expanded="false">Dropdown <span class="caret"></span></a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li><a href="#">Action</a></li>
+                                <li><a href="#">Another action</a></li>
+                                <li><a href="#">Something else here</a></li>
+                                <li class="divider"></li>
+                                <li class="dropdown-header">Nav header</li>
+                                <li><a href="#">Separated link</a></li>
+                                <li><a href="#">One more separated link</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <!--/.nav-collapse -->
+            </div>
+            <!--/.container-fluid -->
+        </nav>
+        <div class="row">
+            <div id="chloropleth" class="col-md-6"></div>
+            <div id="detail" class="col-md-6">
+                <h1>Chicago: Violent Crime by Community Area</h1>
+                <p> For each
+                    <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>,
+                    this map shows the proportion of days since January 1, 2001 where a violent crime was committed.
+                    Darker colors mean more days with crime.
+                </p>
+                <p>
+                    Click on a community area to see more detail.
+                </p>
+                <h2 id="clickedArea"></h2>
+                <p id="clickedMsg" hidden>Days with violent crime: <strong id="clickedRate"></strong>%</p></p>
+            </div>
+        </div>
+    </div>
+        <!-- Bring in the numToArea object that maps from community area numbers to names -->
+        <script src="viewer/js/number_to_community_area.js"></script>
+        <script src="viewer/js/baseline.js"></script>
+		<script type="text/javascript">
+
+			//Width and height
+			var w = 600;
+			var h = 600;
+
+			// Create an SVG element that will hold our map
+			var svg = d3.select("#chloropleth")
+						.append("svg")
+						.attr("width", w)
+						.attr("height", h);
+
+            // Define quantize scale to sort data values into buckets of color
+			var color = d3.scale.quantize()
+                                // These are shades of green used in a D3 book. They look nice.
+								.range(["rgb(237,248,233)",
+                                        "rgb(186,228,179)",
+                                        "rgb(116,196,118)",
+                                        "rgb(49,163,84)",
+                                        "rgb(0,109,44)"])
+                                // We are representing probabilities
+                                .domain([0,1]);
+
+            // Load in GeoJSON data
+            d3.json("viewer/json/commAreasGeo.json", function(geoJson) {
+
+                // D3 can only bind one datum to a DOM element at a time,
+                // so we need to combine the GeoJSON data and the crime data
+                for (var index in geoJson.features) {
+                    area = geoJson.features[index];
+                    geoJson.features[index].name = numToAreaName[area.area_number];
+                    geoJson.features[index].crimeRate = areaNumToCrimeRate[area.area_number]
+                }
+
+                // Create a view that is more or less centered on Chicago
+                var projection = d3.geo.mercator().scale([343300])
+                        .center([-87.68398142305401, 41.92394041])
+                        .translate([250.02673254274777, 174.99268431711602]);
+
+                // Construct a function that will convert GeoJSON coordinates to SVG path coordinates
+                var projectCoordinatesToSVG = d3.geo.path().projection(projection);
+
+                // Create an SVG path element for each datum
+                svg.selectAll("path")
+                    .data(geoJson.features)
+                    .enter()
+                    .append("path")
+                    // The collision of lower-case d's is unfortunate.
+                    // d defines an attribute of SVG path elements that contain points along a path.
+                    // And by convention, d is used as a parameter in D3.js callbacks when referring to a datum that an element is bound to.
+                    .attr("d", projectCoordinatesToSVG)
+                    .style("fill", function(d){
+                        return color(d.crimeRate)
+                    })
+
+                    // Add a black border to each community area
+                    .style("stroke-width", "1")
+                    .style("stroke", "black")
+
+                    // On hover, highlight community areas
+                    .on("mouseover", function() {
+                        d3.select(this)
+                        .attr("opacity", .5);
+                    })
+                    .on("mouseout", function() {
+                        d3.select(this)
+                        .attr("opacity", 1);
+                    })
+                    .on("click", function(d){
+                            $("#clickedArea").text(d.name);
+                            $("#clickedMsg").show();
+                            $("#clickedRate").text(Math.round(d.crimeRate*100));
+                    })
+
+                    // Add tooltip with community area's name
+                    .append("title")
+                    .text(function(d){
+                        return d.name
+                    });
+
+            });
+
+		</script>
+	</body>
+</html>
