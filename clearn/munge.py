@@ -2,9 +2,9 @@ import pandas as pd
 import csv
 
 
-def get_master_dict():
+def get_master_dict(csv_path):
     # Transform csv to Pandas data frame
-    data_frame = pd.read_csv('../data/Crimes_-_2001_to_present.csv')
+    data_frame = pd.read_csv(csv_path)
     # Drop unnecessary columns and reidex crimes by date
     timestamps = make_clean_timestamps(data_frame)
     # From crime timestamps, create dictionary mapping community area names
