@@ -1,4 +1,5 @@
-from . import munge
+import pandas as pd
+from .import munge
 
 """
 Each of sequential(), nonsequential(), and baseline() take:
@@ -45,4 +46,9 @@ def nonsequential_preprocess(master_area_dict):
 
 
 def baseline_preprocess(master_area_dict):
-    pass
+    del master_area_dict['Chicago']
+    days_by_area = \
+        {area: munge.drop_all_columns_but(frame, ['Violent Crime Commited?']) for area, frame in master_area_dict}
+    return days_by_area
+
+
