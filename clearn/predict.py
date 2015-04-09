@@ -19,18 +19,17 @@ Each returns:
 """
 
 
-def sequential(time_series, day): 
-    #play around with number of components- see what is most accurate
-    previous_thirty_days = get_previous_month(time_series,day) #x is the timeseries of the thirty previous days
-    # previous_thirty
-    previous_thirty_days = previous_thirty_days[0].values.tolist()
+def sequential(time_series, day):
+    previous_thirty_days = get_previous_month(time_series, day)
+    binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
     results = []
     #run this nine (dont have to worry about ties) times to account for the randomness- can also play around with this number
     for ind in range(0,9):
-        model = MultinomialHMM(n_components=3,n_iter=10000) #initialize the model
-        model.fit([np.array(x)]) #fit the model
-        hidden_states = model.predict(x) #determine the hidden states for the sequence
-        last_state_probs = model.predict_proba(x)[len(x)-1] #get the most recent hidden state probabilities
+        model = MultinomialHMM(n_components=3,n_iter=10000)
+        model.fit([np.array(binary_crime_sequence)])
+        hidden_states = model.predict(binary_crime_sequence)
+        # get the hidden state probabilities from the last state in the sequence
+        last_state_probs = model.predict_proba(binary_crime_sequence)[-1] 
         current_state = np.where(last_state_probs == max(last_state_probs))[0][0] #determine the most likely current state from those probs
         transition_probs = model.transmat_[current_state] #get the probabilities of the next state given that state
         next_state = np.where(transition_probs==max(transition_probs))[0][0] #get the next state as the most likely of these probs
