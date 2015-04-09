@@ -1,3 +1,5 @@
+import csv
+
 def convolve_by_neighbor(concatenated_days_by_area):
     neighbors_of_area = read_in_neighbors_csv('../config/community_area_neighbors.csv')
 

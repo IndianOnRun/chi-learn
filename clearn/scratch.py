@@ -11,24 +11,6 @@ def make_feature_vectors(timestamps, use_convolution):
     return days_by_area
 
 
-def concat_areas_with_city(days_pan_city, days_by_area):
-    new_column_names = ['Chicago ' + old_name for old_name in list(days_pan_city)]
-    days_pan_city.columns = new_column_names
-    concatenated_days_by_area = {}
-    for area in days_by_area:
-        area_days = days_by_area[area]
-        concatenated_days_by_area[area] = area_days.join(days_pan_city)
-    return concatenated_days_by_area
-
-
-"""
-For adding history to individual training examples
-"""
-
-
-
-
-
 """
 For extracting raw data for training
 """
