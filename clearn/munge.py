@@ -76,6 +76,9 @@ def make_cols_categorical(data_frame, col_names):
     return data_frame
 
 
+""" Used in get_days_by_area() """
+
+
 def get_days_by_area(timestamps):
     days_by_area = {}
     grouped = timestamps.groupby('Community Area')
