@@ -54,6 +54,8 @@ Each returns:
 
 
 def sequential_preprocess(master_area_dict):
+    # Add windows to every data frame
+
     pass
 
 
@@ -66,5 +68,14 @@ def baseline_preprocess(master_area_dict):
     days_by_area = \
         {area: munge.drop_all_columns_but(frame, ['Violent Crime Commited?']) for area, frame in master_area_dict}
     return days_by_area
+
+
+def extract_windows(days):
+    # Add categories to count types of crimes committed in time windows leading to date we're trying to predict
+    for label in ['Violent', 'Severe', 'Minor', 'Petty']:
+        days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
+        days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
+    # The earliest 30 days in the time series have missing values for their first 30 days. Remove those days.
+    return days[:30]
 
 
