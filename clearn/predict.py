@@ -30,16 +30,30 @@ def sequential(time_series, day):
         hidden_states = model.predict(binary_crime_sequence)
         # get the hidden state probabilities from the last state in the sequence
         last_state_probs = model.predict_proba(binary_crime_sequence)[-1] 
-        current_state = np.where(last_state_probs == max(last_state_probs))[0][0] #determine the most likely current state from those probs
-        transition_probs = model.transmat_[current_state] #get the probabilities of the next state given that state
-        next_state = np.where(transition_probs==max(transition_probs))[0][0] #get the next state as the most likely of these probs
-        emissions = model.emissionprob_[next_state] #get the emission probabilities of the current state
-        output = np.where(emissions==max(emissions))[0][0] #determine the most likely of these emissions
-        results.append(output) #add this output to our results array
+        # determine the most likely current state from those probs
+        current_state = get_most_likely(last_state_probs)
+        # get the probabilities of the next state given that state 
+        transition_probs = model.transmat_[current_state]
+        # get the next state as the most likely of these probs
+        next_state = get_most_likely(transition_probs)
+        # get the emission probabilities of the current state
+        emissions = model.emissionprob_[next_state]
+        # determine the most likely of these emissions
+        output = get_most_likely(emissions)
+        # add this output to our results array
+        results.append(output)
     if np.count_nonzero(results) >4:
         return 1
     else:
         return 0
+
+
+def get_most_likely(probs):
+    """
+    probs is a vector of probabilities of outcomes
+    returns the most likely outcome
+    """
+    return np.where(probs==max(probs))[0][0]
 
 
 def nonsequential(time_series, day, model):
