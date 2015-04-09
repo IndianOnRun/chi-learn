@@ -21,8 +21,9 @@ Each returns:
 
 def sequential(time_series, day): 
     #play around with number of components- see what is most accurate
-    x = get_previous_month(time_series,day) #x is the timeseries of the three previous days
-    x = x[0].values.tolist()
+    previous_thirty_days = get_previous_month(time_series,day) #x is the timeseries of the thirty previous days
+    # previous_thirty
+    previous_thirty_days = previous_thirty_days[0].values.tolist()
     results = []
     #run this nine (dont have to worry about ties) times to account for the randomness- can also play around with this number
     for ind in range(0,9):
@@ -102,18 +103,13 @@ Each returns:
 
 
 def sequential_preprocess(master_area_dict):
-    # Drop the unnecessary columns of each neighborhoods data frame
-    sequential_dict = {}
-    for key in master_area_dict.keys():
-        pre_process_df = master_area_dict[key]
-        pre_process_df = pre_process_df.drop(['Arrest','Domestic','Severe Crimes','Minor Crimes','Petty Crimes','Month','Weekday'],1)
-    # Convert all violent crime numbers greater than 0 to 1
-        index = 0
-        while index < len(pre_process_df[0]):
-            if pre_process_df[0][index] > 0:
-                pre_process_df[0][index] = 1
-            index = index + 1
-        sequential_dict[key]=pre_process_df
+    boolean_dict = baseline_preprocess(master_area_dict)
+
+    def convert_bool_frame_to_binary(df):
+        df['Violent Crime Committed?'] = [int(bool) for bool in df['Violent Crime Committed?']]
+        return df
+
+    sequential_dict = {area: convert_bool_frame_to_binary(frame) for area, frame in boolean_dict}
     return sequential_dict
 
 
