@@ -3,6 +3,13 @@ import csv
 
 
 def get_master_dict(csv_path):
+    """
+
+    Returns dictionary mapping each community area name and the city of chicago (key='Chicago')
+    to pandas dataframes. THe dataframes are indexed by day and have the following columns:
+    ['Arrest', 'Domestic', 'Violent Crimes', 'Severe Crimes', 'Minor Crimes', 'Petty Crimes', 'Violent Crime Committed?', 'Month', 'Weekday']
+    There is one exception. The Chicago dataframe does not have the 'Month' and 'Weekday' column.
+    """
     # Transform csv to Pandas data frame
     data_frame = pd.read_csv(csv_path)
     # Drop unnecessary columns and reidex crimes by date
@@ -69,18 +76,22 @@ def make_cols_categorical(data_frame, col_names):
     return data_frame
 
 
-""" Used in make_feature_vectors() """
-
-
 def get_days_by_area(timestamps):
     days_by_area = {}
     grouped = timestamps.groupby('Community Area')
     for name, frame in grouped:
         area_days = make_series_of_days_from_timestamps(frame)
         area_days['Violent Crime Committed?'] = area_days['Violent Crimes'].map(lambda num_crimes: num_crimes > 0)
+        area_days = extract_time_features(area_days)
         days_by_area[name] = area_days
     return days_by_area
 
+
+def extract_time_features(days):
+    days['Month'] = days.index.map(lambda stamp: stamp.month)
+    days['Weekday'] = days.index.map(lambda stamp: stamp.weekday())
+    days = make_cols_categorical(days, ['Month', 'Weekday'])
+    return days
 
 """ Used in make_series_of_days_from_timestamps() """
 
