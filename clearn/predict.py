@@ -13,7 +13,6 @@ Each of sequential(), nonsequential(), and baseline() take:
 
 Each returns:
     - classification: True if crime is predicted. Else False.
-    - probability: a value between 0 and 1 that represents the predicted probability of violent crime
 """
 
 
@@ -21,8 +20,23 @@ def sequential(time_series, day):
     pass
 
 
-def nonsequential(time_series, day):
-    pass
+def nonsequential(time_series, day, model):
+    training_frame = get_time_series_up_to(time_series, day)
+    # Grab boolean list of whether a violent crime was committed on each day.
+    #  Start with the second day.
+    targets = training_frame['Violent Crime Committed?'][1:]
+    # Now that we've extracted the targets from the frame, remove them.
+    del training_frame['Violent Crime Committed?']
+    # Grab list of feature vectors for every day.
+    #   End with second to last day in our history.
+    #   Now each feature vector is aligned with whether a violent crime was committed on the following day
+    feature_vectors = training_frame.values[:-1]
+    # Train our model on the targets and features
+    trained_model = model.fit(feature_vectors, targets)
+    feature_vec_to_classify = training_frame.tail(1).features(0)
+    # Even though we're only making one prediction, sklearn expects to receive and output list-like data structures
+    classification = trained_model.predict([feature_vec_to_classify])[0]
+    return classification
 
 
 def baseline(time_series, day):
@@ -31,7 +45,7 @@ def baseline(time_series, day):
     num_days_with_violent_crime = previous_month['Violent Crime Committed?'].sum()
     probability = num_days_with_violent_crime/DAYS_IN_MONTH
     classification = probability > .5
-    return classification, probability
+    return classification
 
 """
 Helpers for sequential(), nonsequential(), baseline()
@@ -48,7 +62,7 @@ def get_previous_month(time_series, day):
     return time_series.loc[thirty_days_ago: yesterday]
 
 
-def get_training_examples_up_to(time_series, day):
+def get_time_series_up_to(time_series, day):
     # Grab data frame with all days including the last day, and then cut off the last day
     return time_series.loc[:day][:-1]
 
