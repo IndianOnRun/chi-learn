@@ -4,6 +4,7 @@ from . import munge, predict
 
 import pandas as pd
 import random
+import json
 
 """
 How do we do this?
@@ -180,4 +181,15 @@ def report_rankings(rankings):
     :param rankings: a mapping from community area names to Ranking objects
 
     """
-    pass
+    to_json = {}
+    for area, rank_obj in rankings:
+        # Turn ranking objects into dicts for easy serialization with JSON
+        # class
+        rank_hash = {}
+        rank_hash['ranks'] = rank_obj.ranks
+        rank_hash['accuracy'] = rank_obj.accuracy
+        to_json[area] = rank_hash
+
+    output_file = open('results.json')
+    json.dump(to_json, output_file)
+    output_file.close()
