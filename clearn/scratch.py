@@ -98,15 +98,13 @@ def generate_convolved_columns(dataframes, area, neighbors_of_area):
     return [convolution, convolution_week, convolution_month]
 
 
-def extract_time_features(days):
-    days['Month'] = days.index.map(lambda stamp: stamp.month)
-    days['Weekday'] = days.index.map(lambda stamp: stamp.weekday())
-    days = make_cols_categorical(days, ['Month', 'Weekday'])
-    return days
-
-
 def extract_windows(days):
     for label in ['Violent', 'Severe', 'Minor', 'Petty']:
         days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
         days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
     return days
+
+
+def get_target_classification(time_series, day):
+    # Return True if violent crime was committed on day specified
+    return time_series.loc[day]['Violent Crime Committed?']

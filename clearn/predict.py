@@ -1,5 +1,6 @@
 import pandas as pd
-from .import munge
+from . import munge
+import datetime
 
 """
 Each of sequential(), nonsequential(), and baseline() take:
@@ -22,7 +23,22 @@ def nonsequential(time_series, day):
 
 
 def baseline(time_series, day):
-    pass
+    # Get last 30 days
+    DAYS_IN_MONTH = 30
+    thirty_days_ago = day - datetime.timedelta(days=DAYS_IN_MONTH)
+    yesterday = day - datetime.timedelta(days=1)
+    previous_month = time_series.loc[thirty_days_ago, yesterday]
+
+    # Predict assuming that percentage of days with crime in last month gives us probability of crime the next day
+    num_days_with_violent_crime = previous_month['Violent Crime Committed?'].sum()
+    probability = num_days_with_violent_crime/DAYS_IN_MONTH
+    classification = probability > .5
+    return classification, probability
+
+
+def get_training_examples_up_to(time_series, day):
+    # Grab data frame with all days including the last day, and then cut off the last day
+    return time_series.loc[:day][:-1]
 
 
 """
