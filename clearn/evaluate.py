@@ -1,5 +1,10 @@
 __author__ = 'willengler'
 
+from . import munge, predict
+
+import pandas as pd
+import random
+
 """
 How do we do this?
 
@@ -22,37 +27,41 @@ def evaluate(num_days, leave_one_out=False):
     Generate a JSON document mapping community area names
         to performance metrics for each algorithm
     """
+    time_series_dict = munge.get_master_dict()
+    # TODO Better way to get the end date?
+    last_day_of_data = time_series.tail(1).index.to_pydate
+
+    # Since we can't evaluate the data from data (predicting tomorrow's violent
+    # crimes), we subtract one
+    end_date = last_day_of_data - datetime.timedelta(days=1)
 
     if leave_one_out:
         # Generate list of datetimes from Jan 1, 2005 to latest day in dataset
-        days_to_predict = get_all_days(foo, bar)
+        days_to_predict = get_all_days(datetime.date(2005, 1, 1), end_date)
     else:
         # Pick random set of num_days days from Jan 1, 2005 to latest day in dataset
-        days_to_predict = pick_days(num_days, last_day)
+        days_to_predict = pick_days(num_days, end_date)
 
     # Get dicts mapping comm area to accuracy on that area
-    seq_accuracy = get_sequential_accuracy(days_to_predict)
-    nonseq_accuracy = get_nonsequential_accuracy(days_to_predict)
-    baseline_accuracy = get_baseline_accuracy(days_to_predict)
+    seq_accuracy = get_sequential_accuracy(time_series_dict, days_to_predict)
+    nonseq_accuracy = get_nonsequential_accuracy(time_series_dict, days_to_predict)
+    baseline_accuracy = get_baseline_accuracy(time_series_dict, days_to_predict)
 
     rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy)
     report_rankings(rankings)
 
 
 def pick_days(num_days, end_date):
-    """
-    :return: list of datetimes between Jan 1, 2005 and end_date that we want
-     to test the algorithms on
-    """
-    pass
-
+    fullrange = get_all_days(datetime.date(2005, 1, 1), end_date)
+    return random.sample(fullrange, num_days)
 
 def get_all_days(start_date, end_date):
     """
     :return: list of datetimes with one datetime for each day between
         the start of evaluation and the end
     """
-    pass
+    # date_range uses inclusive date endpoints.
+    return pd.date_range(start_date, end_date).tolist()
 
 """
 get_[sequential, nonsequential, baseline]_accuracy takes:
@@ -61,18 +70,59 @@ and returns:
     accuracy_by_comm_area: a dict mapping community area names to the percentage of days correctly classified
 """
 
+def get_sequential_accuracy(time_series_dict, days_to_predict):
+    sequential_series = predict.sequential_preprocess(time_series)
+    area_to_performance_map = {}
+    for area, dataframe in time_series_dict:
+        number_correct_predictions = 0
 
-def get_sequential_accuracy(days_to_predict):
-    pass
+        for day in days_to_predict:
+            predicted_result, prob = predict.sequential(dataframe, day)
+            # Assume that this is store
+            actual_result = dataframe['Violent Crime Committed?'][day]
+            if actual_result == predicted_result:
+                number_correct_predictions += 1
 
+        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
 
-def get_nonsequential_accuracy(days_to_predict):
-    pass
+    return area_to_performance_map
 
+def get_nonsequential_accuracy(time_series_dict, days_to_predict):
+    non_sequential_series = predict.nonsequential_preprocess(time_series)
+    area_to_performance_map = {}
+    for area, dataframe in time_series_dict:
+        number_correct_predictions = 0
 
-def get_baseline_accuracy(days_to_predict):
-    pass
+        for day in days_to_predict:
+            predicted_result, prob = predict.nonsequential(dataframe, day)
+            # Assume that prediction is stored in same date rather than the next
+            # day (punt this work to pre-processing)
+            actual_result = dataframe['Violent Crime Committed?'][day]
+            if actual_result == predicted_result:
+                number_correct_predictions += 1
 
+        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
+
+    return area_to_performance_map
+
+def get_baseline_accuracy(time_series_dict, days_to_predict):
+    baseline_series = predict.baseline_preprocess(time_series)
+
+    area_to_performance_map = {}
+    for area, dataframe in time_series_dict:
+        number_correct_predictions = 0
+
+        for day in days_to_predict:
+            predicted_result, prob = predict.baseline(dataframe, day)
+            # Assume that prediction is stored in same date rather than the next
+            # day (punt this work to pre-processing)
+            actual_result = dataframe['Violent Crime Committed?'][day]
+            if actual_result == predicted_result:
+                number_correct_predictions += 1
+
+        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
+
+    return area_to_performance_map
 
 class Ranking:
     def __init__(self):
@@ -95,8 +145,33 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy):
 
     :return: dictionary mapping comm areas to rankings of each neighborhood
     """
-    pass
 
+    area_to_ranking_map = {}
+    # We sorta pick a random array here to iterate over :P
+    for area in seq_accuracy:
+        sequential = seq_accuracy[area]
+        nonsequential = nonseq_accuracy[area]
+        baseline = baseline_accuracy[area]
+
+        area_ranking = Ranking()
+
+        rating_tuples = [('sequential', sequential), ('nonsequential', nonsequential), ('baseline', baseline)]
+        sorted_rating_tuples = sorted(array_of_tuples, key=lambda rating: rating[1], reverse=True)
+
+        sorted_models = map(lambda rating: rating[0], sorted_tuples)
+
+        ranks = {}
+
+        for model in ['sequential', 'nonsequential', 'baseline']:
+            ranks[model] = sorted_models.index(model) + 1
+
+        area_ranking.ranks = ranks
+
+        area_ranking.accuracy = {'sequential': sequential, 'nonsequential': nonsequential, 'baseline': baseline}
+
+        area_to_ranking[area] = area_ranking
+
+    return area_to_ranking_map
 
 def report_rankings(rankings):
     """
