@@ -5,6 +5,7 @@ from . import munge, predict
 import pandas as pd
 import random
 import json
+import datetime
 
 """
 How do we do this?
@@ -28,9 +29,9 @@ def evaluate(num_days, leave_one_out=False):
     Generate a JSON document mapping community area names
         to performance metrics for each algorithm
     """
-    time_series_dict = munge.get_master_dict()
+    time_series_dict = munge.get_master_dict('crimeSample.csv')
     # TODO Better way to get the end date?
-    last_day_of_data = time_series.tail(1).index.to_pydate
+    last_day_of_data = time_series_dict.tail(1).index.to_pydate
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
     # crimes), we subtract one
@@ -72,7 +73,7 @@ and returns:
 """
 
 def get_sequential_accuracy(time_series_dict, days_to_predict):
-    sequential_series = predict.sequential_preprocess(time_series)
+    sequential_series = predict.sequential_preprocess(time_series_dict)
     area_to_performance_map = {}
     for area, dataframe in time_series_dict:
         number_correct_predictions = 0
@@ -89,7 +90,7 @@ def get_sequential_accuracy(time_series_dict, days_to_predict):
     return area_to_performance_map
 
 def get_nonsequential_accuracy(time_series_dict, days_to_predict):
-    non_sequential_series = predict.nonsequential_preprocess(time_series)
+    non_sequential_series = predict.nonsequential_preprocess(time_series_dict)
     area_to_performance_map = {}
     for area, dataframe in time_series_dict:
         number_correct_predictions = 0
@@ -107,7 +108,7 @@ def get_nonsequential_accuracy(time_series_dict, days_to_predict):
     return area_to_performance_map
 
 def get_baseline_accuracy(time_series_dict, days_to_predict):
-    baseline_series = predict.baseline_preprocess(time_series)
+    baseline_series = predict.baseline_preprocess(time_series_dict)
 
     area_to_performance_map = {}
     for area, dataframe in time_series_dict:
@@ -157,9 +158,9 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy):
         area_ranking = Ranking()
 
         rating_tuples = [('sequential', sequential), ('nonsequential', nonsequential), ('baseline', baseline)]
-        sorted_rating_tuples = sorted(array_of_tuples, key=lambda rating: rating[1], reverse=True)
+        sorted_rating_tuples = sorted(rating_tuples, key=lambda rating: rating[1], reverse=True)
 
-        sorted_models = map(lambda rating: rating[0], sorted_tuples)
+        sorted_models = map(lambda rating: rating[0], sorted_rating_tuples)
 
         ranks = {}
 
@@ -170,7 +171,7 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy):
 
         area_ranking.accuracy = {'sequential': sequential, 'nonsequential': nonsequential, 'baseline': baseline}
 
-        area_to_ranking[area] = area_ranking
+        area_to_ranking_map[area] = area_ranking
 
     return area_to_ranking_map
 
