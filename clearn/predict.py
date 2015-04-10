@@ -1,6 +1,6 @@
 import pandas as pd
 from . import munge
-from hmmlearn import MultinomialHMM
+from hmmlearn.hmm import MultinomialHMM
 import numpy as np
 from .convolve import convolve_by_neighbor
 import datetime
@@ -19,27 +19,45 @@ Each returns:
 """
 
 
-def sequential(time_series, day): 
-    #play around with number of components- see what is most accurate
-    x = get_previous_month(time_series,day) #x is the timeseries of the three previous days
-    x = x[0].values.tolist()
+def sequential(time_series, day):
+    previous_thirty_days = get_previous_month(time_series, day)
+    binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
+    if binary_crime_sequence == [1]*30:
+        return 1
+    if binary_crime_sequence == [0]*30:
+        return 0
     results = []
     #run this nine (dont have to worry about ties) times to account for the randomness- can also play around with this number
     for ind in range(0,9):
-        model = MultinomialHMM(n_components=3,n_iter=10000) #initialize the model
-        model.fit([np.array(x)]) #fit the model
-        hidden_states = model.predict(x) #determine the hidden states for the sequence
-        last_state_probs = model.predict_proba(x)[len(x)-1] #get the most recent hidden state probabilities
-        current_state = np.where(last_state_probs == max(last_state_probs))[0][0] #determine the most likely current state from those probs
-        transition_probs = model.transmat_[current_state] #get the probabilities of the next state given that state
-        next_state = np.where(transition_probs==max(transition_probs))[0][0] #get the next state as the most likely of these probs
-        emissions = model.emissionprob_[next_state] #get the emission probabilities of the current state
-        output = np.where(emissions==max(emissions))[0][0] #determine the most likely of these emissions
-        results.append(output) #add this output to our results array
+        model = MultinomialHMM(n_components=3,n_iter=10000)
+        model.fit([np.array(binary_crime_sequence)])
+        hidden_states = model.predict(binary_crime_sequence)
+        # get the hidden state probabilities from the last state in the sequence
+        last_state_probs = model.predict_proba(binary_crime_sequence)[-1] 
+        # determine the most likely current state from those probs
+        current_state = get_most_likely(last_state_probs)
+        # get the probabilities of the next state given that state 
+        transition_probs = model.transmat_[current_state]
+        # get the next state as the most likely of these probs
+        next_state = get_most_likely(transition_probs)
+        # get the emission probabilities of the current state
+        emissions = model.emissionprob_[next_state]
+        # determine the most likely of these emissions
+        output = get_most_likely(emissions)
+        # add this output to our results array
+        results.append(output)
     if np.count_nonzero(results) >4:
         return 1
     else:
         return 0
+
+
+def get_most_likely(probs):
+    """
+    probs is a vector of probabilities of outcomes
+    returns the most likely outcome
+    """
+    return np.where(probs==max(probs))[0][0]
 
 
 def nonsequential(time_series, day, model):
@@ -102,18 +120,13 @@ Each returns:
 
 
 def sequential_preprocess(master_area_dict):
-    # Drop the unnecessary columns of each neighborhoods data frame
-    sequential_dict = {}
-    for key in master_area_dict.keys():
-        pre_process_df = master_area_dict[key]
-        pre_process_df = pre_process_df.drop(['Arrest','Domestic','Severe Crimes','Minor Crimes','Petty Crimes','Month','Weekday'],1)
-    # Convert all violent crime numbers greater than 0 to 1
-        index = 0
-        while index < len(pre_process_df[0]):
-            if pre_process_df[0][index] > 0:
-                pre_process_df[0][index] = 1
-            index = index + 1
-        sequential_dict[key]=pre_process_df
+    boolean_dict = baseline_preprocess(master_area_dict)
+
+    def convert_bool_frame_to_binary(df):
+        df['Violent Crime Committed?'] = [int(bool) for bool in df['Violent Crime Committed?']]
+        return df
+
+    sequential_dict = {area: convert_bool_frame_to_binary(frame) for area, frame in boolean_dict}
     return sequential_dict
 
 
