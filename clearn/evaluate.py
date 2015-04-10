@@ -2,12 +2,12 @@ __author__ = 'willengler'
 
 from . import munge, predict
 
-import pandas as pd
-import random
+import datetime
 import json
 import math
+import pandas as pd
+import random
 import sys
-import datetime
 
 """
 How do we do this?
@@ -161,32 +161,14 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
 
         models = [('sequential', sequential), ('nonsequential', nonsequential), ('baseline', baseline)]
 
-        # Naively sort models by accuracy
-        sorted_models = sorted(models, key=lambda model_tuple: model_tuple[1])
+        # Naively sort models by accuracy.  Reverse it, because smallest are first in array by default; we want
+        # to sort by most correct, so we want largest first.
+        sorted_models = sorted(models, key=lambda model_tuple: model_tuple[1], reverse=True)
 
-        # Compare the first two models with a z-test
-        first_two_models_comparison = run_z_test(sorted_models[0][1], sorted_models[1][1], total_count)
-
-        # ... and rank them as follows, with a mini-error check
-        if first_two_models_comparison == 1:
-            area_ranking.ranks[sorted_models[0][0]] = 1
-            area_ranking.ranks[sorted_models[1][0]] = 2
-        elif first_two_models_comparison == 0:
-            area_ranking.ranks[sorted_models[0][0]] = 1
-            area_ranking.ranks[sorted_models[1][0]] = 1
-        else:
-            sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for first two models')
-
-        # Next, compare the latter models
-        second_two_models_comparison = run_z_test(sorted_models[1][1], sorted_models[2][1], total_count)
-
-        # ... and assign rankings
-        if second_two_models_comparison == 1:
-            area_ranking.ranks[sorted_models[2][0]] = 3
-        elif second_two_models_comparison == 0:
-            area_ranking.ranks[sorted_models[2][0]] = 2
-        else:
-            sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for third model')
+        # Apply rankings to the models
+        area_ranking.ranks[sorted_models[0][0]] = 1
+        apply_ranking(area_ranking, sorted_models, total_count, 1)
+        apply_ranking(area_ranking, sorted_models, total_count, 2)
 
         # Finally, update the accuracies in the ranking object:
         for model_tuple in sorted_models:
@@ -195,6 +177,23 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
         area_to_ranking_map[area] = area_ranking
 
     return area_to_ranking_map
+
+"""
+    Takes in a ranking object, a sorted array of model tuples (see previous function), the number of instances, and the
+    index of the first element to rank, and it gives said element the proper ranking.
+"""
+def apply_ranking(ranking, sorted_models, total_count, second_index):
+    first_index = second_index - 1
+
+    model_comparison = run_z_test(sorted_models[first_index][1], sorted_models[second_index][1], total_count)
+
+    # ... and assign rankings
+    if model_comparison == 1:
+        ranking.ranks[sorted_models[second_index][0]] = second_index + 1
+    elif model_comparison == 0:
+        ranking.ranks[sorted_models[second_index][0]] = second_index
+    else:
+        sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for third model')
 
 """
 run_z_test takes:
