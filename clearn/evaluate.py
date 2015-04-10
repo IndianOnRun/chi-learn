@@ -51,7 +51,7 @@ def evaluate(num_days, leave_one_out=False):
     nonseq_accuracy = get_nonsequential_accuracy(time_series_dict, days_to_predict)
     baseline_accuracy = get_baseline_accuracy(time_series_dict, days_to_predict)
 
-    rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy)
+    rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, len(days_to_predict))
     report_rankings(rankings)
 
 
@@ -167,8 +167,8 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
 
         # Apply rankings to the models
         area_ranking.ranks[sorted_models[0][0]] = 1
-        apply_ranking(area_ranking, sorted_models, total_count, 1)
-        apply_ranking(area_ranking, sorted_models, total_count, 2)
+        find_ranking(area_ranking, sorted_models, total_count, 1)
+        find_ranking(area_ranking, sorted_models, total_count, 2)
 
         # Finally, update the accuracies in the ranking object:
         for model_tuple in sorted_models:
@@ -182,7 +182,7 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
     Takes in a ranking object, a sorted array of model tuples (see previous function), the number of instances, and the
     index of the first element to rank, and it gives said element the proper ranking.
 """
-def apply_ranking(ranking, sorted_models, total_count, second_index):
+def find_ranking(ranking, sorted_models, total_count, second_index):
     first_index = second_index - 1
 
     model_comparison = run_z_test(sorted_models[first_index][1], sorted_models[second_index][1], total_count)
