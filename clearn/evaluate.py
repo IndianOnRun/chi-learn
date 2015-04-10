@@ -5,6 +5,8 @@ from . import munge, predict
 import pandas as pd
 import random
 import json
+import math
+import sys
 import datetime
 
 """
@@ -69,7 +71,7 @@ def get_all_days(start_date, end_date):
 get_[sequential, nonsequential, baseline]_accuracy takes:
     days_to_predict: a list of datetimes on which to generate and test predictions
 and returns:
-    accuracy_by_comm_area: a dict mapping community area names to the percentage of days correctly classified
+    accuracy_by_comm_area: a dict mapping community area names to the number of days correctly classified
 """
 
 def get_sequential_accuracy(time_series_dict, days_to_predict):
@@ -85,7 +87,7 @@ def get_sequential_accuracy(time_series_dict, days_to_predict):
             if actual_result == predicted_result:
                 number_correct_predictions += 1
 
-        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
+        area_to_performance_map[area] = number_correct_predictions
 
     return area_to_performance_map
 
@@ -103,7 +105,7 @@ def get_nonsequential_accuracy(time_series_dict, days_to_predict):
             if actual_result == predicted_result:
                 number_correct_predictions += 1
 
-        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
+        area_to_performance_map[area] = number_correct_predictions
 
     return area_to_performance_map
 
@@ -122,7 +124,7 @@ def get_baseline_accuracy(time_series_dict, days_to_predict):
             if actual_result == predicted_result:
                 number_correct_predictions += 1
 
-        area_to_performance_map[area] = number_correct_predictions / len(days_to_predict)
+        area_to_performance_map[area] = number_correct_predictions
 
     return area_to_performance_map
 
@@ -142,7 +144,7 @@ class Ranking:
         }
 
 
-def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy):
+def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count):
     """
 
     :return: dictionary mapping comm areas to rankings of each neighborhood
@@ -157,23 +159,78 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy):
 
         area_ranking = Ranking()
 
-        rating_tuples = [('sequential', sequential), ('nonsequential', nonsequential), ('baseline', baseline)]
-        sorted_rating_tuples = sorted(rating_tuples, key=lambda rating: rating[1], reverse=True)
+        models = [('sequential', sequential), ('nonsequential', nonsequential), ('baseline', baseline)]
 
-        sorted_models = map(lambda rating: rating[0], sorted_rating_tuples)
+        # Naively sort models by accuracy
+        sorted_models = sorted(models, key=lambda model_tuple: model_tuple[1])
 
-        ranks = {}
+        # Compare the first two models with a z-test
+        first_two_models_comparison = run_z_test(sorted_models[0][1], sorted_models[1][1], total_count)
 
-        for model in ['sequential', 'nonsequential', 'baseline']:
-            ranks[model] = sorted_models.index(model) + 1
+        # ... and rank them as follows, with a mini-error check
+        if first_two_models_comparison == 1:
+            area_ranking.ranks[sorted_models[0][0]] = 1
+            area_ranking.ranks[sorted_models[1][0]] = 2
+        elif first_two_models_comparison == 0:
+            area_ranking.ranks[sorted_models[0][0]] = 1
+            area_ranking.ranks[sorted_models[1][0]] = 1
+        else:
+            sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for first two models')
 
-        area_ranking.ranks = ranks
+        # Next, compare the latter models
+        second_two_models_comparison = run_z_test(sorted_models[1][1], sorted_models[2][1], total_count)
 
-        area_ranking.accuracy = {'sequential': sequential, 'nonsequential': nonsequential, 'baseline': baseline}
+        # ... and assign rankings
+        if second_two_models_comparison == 1:
+            area_ranking.ranks[sorted_models[2][0]] = 3
+        elif second_two_models_comparison == 0:
+            area_ranking.ranks[sorted_models[2][0]] = 2
+        else:
+            sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for third model')
+
+        # Finally, update the accuracies in the ranking object:
+        for model_tuple in sorted_models:
+            area_ranking.accuracy[model_tuple[0]] = model_tuple[1]
 
         area_to_ranking_map[area] = area_ranking
 
     return area_to_ranking_map
+
+"""
+run_z_test takes:
+    first_accuracy: Number of predictions correct from the first model
+    second_accuracy: Number of predictions correct from the second
+    total_count: Total number of instances tested
+and returns:
+    significantly_different: -1 if first is significantly worse than second, 0 if there is no significant difference,
+    and 1 if first is significantly better than second (using 95% confidence)
+"""
+def run_z_test(first_accuracy, second_accuracy, total_count):
+    first_wrong = total_count - first_accuracy
+    second_wrong = total_count - second_accuracy
+    first_error = first_wrong / total_count
+    second_error = second_wrong / total_count
+
+    error_diff = first_error - second_error
+
+    variance = ((first_error * (1 - first_error)) + (second_error * (1 - second_error)) / total_count)
+    stdev = math.sqrt(variance)
+
+    ci_term = 1.96 * stdev
+
+    ci_left_boundary = error_diff - ci_term
+    ci_right_boundary = error_diff + ci_term
+
+    # If the interval contains zero, there's no significant difference
+    if ci_left_boundary < 0 and ci_right_boundary > 0:
+        return 0
+
+    # Difference is significant, return value based on which accuracy is greater
+    if first_accuracy < second_accuracy:
+        return -1
+    else:
+        return 1
+
 
 def report_rankings(rankings):
     """
