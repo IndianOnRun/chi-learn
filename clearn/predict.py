@@ -1,8 +1,8 @@
 import pandas as pd
-from . import munge
+from clearn import munge
 from hmmlearn.hmm import MultinomialHMM
 import numpy as np
-from .convolve import convolve_by_neighbor
+from clearn.convolve import convolve_by_neighbor
 import datetime
 
 DAYS_IN_MONTH = 30

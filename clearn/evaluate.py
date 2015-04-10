@@ -1,6 +1,5 @@
-__author__ = 'willengler'
-
-from . import munge, predict
+from clearn import munge
+from clearn import predict
 
 import datetime
 import json

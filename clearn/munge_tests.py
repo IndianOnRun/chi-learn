@@ -1,5 +1,5 @@
 import unittest
-from . import munge
+from clearn import munge
 
 
 class TestTimestampCreation(unittest.TestCase):
