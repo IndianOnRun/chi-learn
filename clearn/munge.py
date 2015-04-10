@@ -1,5 +1,6 @@
 import pandas as pd
 import csv
+from clearn import clearn_path
 
 
 def get_master_dict(csv_path):
@@ -28,7 +29,7 @@ def get_master_dict(csv_path):
 def make_clean_timestamps(data_frame):
     data_frame = drop_all_columns_but(data_frame, ['Date', 'Primary Type', 'Community Area', 'Arrest', 'Domestic'])
     data_frame = convert_comm_area_nums_to_names(data_frame)
-    data_frame = transform_from_csv(data_frame, 'Primary Type', '../config/crime_bins.csv')
+    data_frame = transform_from_csv(data_frame, 'Primary Type', clearn_path('config/crime_bins.csv'))
     timestamps = reindex_by_date(data_frame)
     timestamps = make_cols_categorical(timestamps, ['Primary Type', 'Community Area'])
     return timestamps
@@ -50,7 +51,7 @@ def convert_comm_area_nums_to_names(data_frame):
     data_frame = data_frame[data_frame['Community Area'] > 0]
     # Convert numbers to strings for easy binning
     data_frame['Community Area'] = data_frame['Community Area'].map(lambda num: str(int(num)))
-    data_frame = transform_from_csv(data_frame, 'Community Area', '../config/community_areas.csv')
+    data_frame = transform_from_csv(data_frame, 'Community Area', clearn_path('config/community_areas.csv'))
     return data_frame
 
 
