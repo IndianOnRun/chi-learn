@@ -1,6 +1,6 @@
 import pandas as pd
 from . import munge
-from hmmlearn import MultinomialHMM
+from hmmlearn.hmm import MultinomialHMM
 import numpy as np
 from .convolve import convolve_by_neighbor
 import datetime
@@ -22,6 +22,10 @@ Each returns:
 def sequential(time_series, day):
     previous_thirty_days = get_previous_month(time_series, day)
     binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
+    if binary_crime_sequence == [1]*30:
+        return 1
+    if binary_crime_sequence == [0]*30:
+        return 0
     results = []
     #run this nine (dont have to worry about ties) times to account for the randomness- can also play around with this number
     for ind in range(0,9):
