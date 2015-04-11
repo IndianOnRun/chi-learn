@@ -30,3 +30,11 @@ class TestZTest(unittest.TestCase):
         actual_result = evaluate.run_z_test(first_accuracy, second_accuracy, total_count)
         expected_result = 0
         self.assertEqual(expected_result, actual_result)
+
+    def test_with_negative_accuracy(self):
+        with self.assertRaises(ValueError):
+            evaluate.run_z_test(1, -10, 1)
+
+    def test_with_zero_count(self):
+        with self.assertRaises(ValueError):
+            evaluate.run_z_test(1, 1, 0)
