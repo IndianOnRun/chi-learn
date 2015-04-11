@@ -51,42 +51,49 @@ class SequentialPredictor(Predictor):
         self.time_series = time_series
 
     def predict(self, day_to_predict):
+        # Get records of 30 days before day_to_predict
         previous_thirty_days = get_previous_month(self.time_series, day_to_predict)
         binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
+
+        # Unsupervised HMM can't account for string of identical emissions.
+        # If we see such a string, just predict the same emission for the following day.
         if binary_crime_sequence == [1]*30:
-            return 1
+            return True
         if binary_crime_sequence == [0]*30:
-            return 0
-        results = []
-        #run this nine (dont have to worry about ties) times to account for the randomness- can also play around with this number
-        for ind in range(0,9):
-            model = MultinomialHMM(n_components=3,n_iter=10000)
+            return False
+
+        votes = []
+        # Train nine HMMs. They are initialized randomly, so we take "votes" from nine HMMs.
+        #  Why 9? Odd numbers preclude ties.
+        #  And nine is a decent tradeoff between performance and getting bad results by chance
+        for _ in range(9):
+            # Train HMM
+            model = MultinomialHMM(n_components=3, n_iter=10000)
             model.fit([np.array(binary_crime_sequence)])
-            hidden_states = model.predict(binary_crime_sequence)
-            # get the hidden state probabilities from the last state in the sequence
+
+            # Determine the most likely state of the last day in the sequence
             last_state_probs = model.predict_proba(binary_crime_sequence)[-1]
-            # determine the most likely current state from those probs
             current_state = self.get_most_likely(last_state_probs)
-            # get the probabilities of the next state given that state
+
+            # Determine the most likely state of the day we're trying to predict
             transition_probs = model.transmat_[current_state]
-            # get the next state as the most likely of these probs
             next_state = self.get_most_likely(transition_probs)
-            # get the emission probabilities of the current state
+
+            # Determine the most likely emission (crime/no crime) from a day in that state
             emissions = model.emissionprob_[next_state]
-            # determine the most likely of these emissions
-            output = self.get_most_likely(emissions)
-            # add this output to our results array
-            results.append(output)
-        if np.count_nonzero(results) > 4:
-            return 1
-        else:
-            return 0
+            vote = self.get_most_likely(emissions)
+
+            # Record this HMM's vote
+            votes.append(vote)
+
+        # Votes are 1 for crime, 0 for no crime. Return True if majority votes for crime.
+        return sum(votes) > 4
 
     @staticmethod
     def get_most_likely(probs):
         """
-        probs is a vector of probabilities of outcomes
-        returns the most likely outcome
+        probs is a vector of probability weights of a random variable.
+        Returns the value with the highest weight.
         """
         return np.where(probs == max(probs))[0][0]
 
