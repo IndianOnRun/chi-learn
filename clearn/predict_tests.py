@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from clearn import predict
+from clearn.predict import SequentialPredictor
 
 
 class SequentialTests(unittest.TestCase):
@@ -14,21 +14,33 @@ class SequentialTests(unittest.TestCase):
     def test_series_with_all_violent_days(self):
         # 1 means a violent crime was committed
         self.time_series['Violent Crime Committed?'] = [1]*32
-        predictor = predict.SequentialPredictor(self.time_series)
+        predictor = SequentialPredictor(self.time_series)
         self.assertTrue(predictor.predict(self.date_to_predict))
 
     def test_series_with_no_violent_days(self):
         # 0 Means no violent crime was committed
         self.time_series['Violent Crime Committed?'] = [0]*32
-        predictor = predict.SequentialPredictor(self.time_series)
+        predictor = SequentialPredictor(self.time_series)
         self.assertFalse(predictor.predict(self.date_to_predict))
 
     def test_series_with_one_violent_day(self):
         self.time_series['Violent Crime Committed?'] = [0, 0, 1] + [0]*29
-        predictor = predict.SequentialPredictor(self.time_series)
+        predictor = SequentialPredictor(self.time_series)
         self.assertFalse(predictor.predict(self.date_to_predict))
 
     def test_series_with_one_nonviolent_day(self):
         self.time_series['Violent Crime Committed?'] = [1, 1, 0] + [1]*29
-        predictor = predict.SequentialPredictor(self.time_series)
+        predictor = SequentialPredictor(self.time_series)
         self.assertTrue(predictor.predict(self.date_to_predict))
+
+    def test_preprocess(self):
+        test_dict = {
+            # The Violent Crime Committed? column should be converted to ints
+            'Edgewater': pd.DataFrame({'Violent Crime Committed?': [True, False]}),
+            # preprocess() deletes a Chicago key. It's allowed to expect it, so we'll mock it here.
+            'Chicago': None
+        }
+        processed_dict = SequentialPredictor.preprocess(test_dict)
+        processed_column = processed_dict['Edgewater']['Violent Crime Committed?'].values
+        # [True, False] should become [1, 0]
+        self.assertEqual(list(processed_column), [1, 0])

@@ -105,7 +105,7 @@ class SequentialPredictor(Predictor):
             df['Violent Crime Committed?'] = [int(boolean) for boolean in df['Violent Crime Committed?']]
             return df
 
-        sequential_dict = {area: convert_bool_frame_to_binary(frame) for area, frame in boolean_dict}
+        sequential_dict = {area: convert_bool_frame_to_binary(frame) for area, frame in boolean_dict.items()}
         return sequential_dict
 
 
@@ -178,7 +178,7 @@ class BaselinePredictor(Predictor):
         self.time_series = time_series
 
     def predict(self, day_to_predict):
-        previous_month = BaselinePredictor.get_previous_month(self.time_series, day_to_predict)
+        previous_month = get_previous_month(self.time_series, day_to_predict)
 
         # Predict assuming that percentage of days with crime in last month gives us probability of crime the next day
         num_days_with_violent_crime = previous_month['Violent Crime Committed?'].sum()
@@ -189,8 +189,8 @@ class BaselinePredictor(Predictor):
     @staticmethod
     def preprocess(master_area_dict):
         del master_area_dict['Chicago']
-        days_by_area = \
-            {area: munge.drop_all_columns_but(frame, ['Violent Crime Commited?']) for area, frame in master_area_dict}
+        days_by_area = {area: munge.drop_all_columns_but(frame, ['Violent Crime Committed?'])
+                        for area, frame in master_area_dict.items()}
         return days_by_area
 
 
