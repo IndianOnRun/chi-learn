@@ -145,12 +145,17 @@ class NonsequentialPredictor(Predictor):
     def preprocess(master_dict, convolve=False):
 
         # Add windows of recent crime history to every data frame
-        with_windows = {area: NonsequentialPredictor.extract_windows(frame) for area, frame in master_dict}
+        with_windows = {area: NonsequentialPredictor.extract_windows(frame) for area, frame in master_dict.items()}
+
+        # Take data for the entire city out of master_dict
+        chicago_frame = with_windows.pop('Chicago')
+        # and relabel its columns to make clear that it is city data.
+        new_column_names = ['Chicago ' + old_name for old_name in list(chicago_frame)]
+        chicago_frame.columns = new_column_names
 
         # Map each community area to a dataframe containing that area's recent history
         #   AND the whole city's recent history
-        chicago_frame = with_windows.pop('Chicago')
-        with_city_history = {area: frame.join(chicago_frame) for area, frame in with_windows}
+        with_city_history = {area: frame.join(chicago_frame) for area, frame in with_windows.items()}
 
         if convolve:
             return convolve_by_neighbor(with_city_history)
@@ -164,7 +169,7 @@ class NonsequentialPredictor(Predictor):
             days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
             days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
         # The earliest 30 days in the time series have missing values for their first 30 days. Remove those days.
-        return days[:30]
+        return days[30:]
 
     @staticmethod
     def get_time_series_up_to(time_series, day):

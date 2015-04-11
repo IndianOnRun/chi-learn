@@ -61,12 +61,14 @@ class BaselineTests(unittest.TestCase):
         predictor = BaselinePredictor(self.time_series)
         self.assertFalse(predictor.predict(self.date_to_predict))
 
+
 class NonsequentialTests(unittest.TestCase):
-    pass
+    def setUp(self):
+        pass
 
 
 class PreprocessTests(unittest.TestCase):
-    def test_nonsequential_preprocess(self):
+    def test_baseline_preprocess(self):
         test_dict = {
             'Chicago': 'some_data',
             'Edgewater': pd.DataFrame({
@@ -86,7 +88,7 @@ class PreprocessTests(unittest.TestCase):
         # except for 'Violent Crime Committed?'.
         self.assertIn('Violent Crime Committed?', processed['Edgewater'])
 
-    def test_baseline_preprocess(self):
+    def test_sequential_preprocess(self):
         test_dict = {
             # The Violent Crime Committed? column should be converted to ints
             'Edgewater': pd.DataFrame({'Violent Crime Committed?': [True, False]}),
@@ -97,3 +99,74 @@ class PreprocessTests(unittest.TestCase):
         processed_column = processed_dict['Edgewater']['Violent Crime Committed?'].values
         # [True, False] should become [1, 0]
         self.assertEqual(list(processed_column), [1, 0])
+
+
+class NonsequentialPreprocessTests(unittest.TestCase):
+    def setUp(self):
+        # Make data frames with length of 31 to allow for window function that aggregates previous 30 days.
+        test_dict = {
+            'Edgewater': pd.DataFrame({
+                'Violent Crimes': [1]*31,
+                'Severe Crimes': [2]*31,
+                'Minor Crimes': [3]*31,
+                'Petty Crimes': [2]*31
+            }),
+            'Chicago': pd.DataFrame({
+                'Violent Crimes': [5]*31,
+                'Severe Crimes': [2]*31,
+                'Minor Crimes': [10]*31,
+                'Petty Crimes': [5]*31
+            })
+        }
+        self.processed = NonsequentialPredictor.preprocess(test_dict)
+
+    def test_keys(self):
+        # There should no longer be a data frame for Chicago
+        self.assertNotIn('Chicago', self.processed)
+        # But every community area should be there
+        self.assertIn('Edgewater', self.processed)
+
+    def test_columns(self):
+        # There shall be columns for the four bins of crime that day, the preceding week, and the preceding month
+        crime_labels = ['Violent', 'Severe', 'Minor', 'Petty']
+        column_names = set()
+        for label in crime_labels:
+            for frequency in ['' ' in Last Week', ' in Last Month']:
+                column_names.add(label + ' Crimes' + frequency)
+
+        time_series = self.processed['Edgewater']
+        for name in column_names:
+            # There shall be a column for each combination of crime type and frequency in each community area
+            self.assertIn(name, time_series)
+            # and in the city at large.
+            self.assertIn('Chicago ' + name, time_series)
+
+    def test_row_values(self):
+        # Because the window function requires 30 days of history,
+        # our 31 day dataframe should have just one day after processing
+        time_series = self.processed['Edgewater']
+        self.assertEqual(len(time_series), 1)
+
+        # The 'in Last Week' columns should sum over the preceding 7 days,
+        # the 'in Last Month' columns should sum over the last 30 days,
+        # and the original columns should be unchanged.
+        for col_name, expected_val in {
+            'Violent Crimes': 1,
+            'Violent Crimes in Last Week': 7,
+            'Violent Crimes in Last Month': 30,
+            'Severe Crimes': 2,
+            'Severe Crimes in Last Week': 14,
+            'Severe Crimes in Last Month': 60,
+            'Minor Crimes': 3,
+            'Minor Crimes in Last Week': 21,
+            'Minor Crimes in Last Month': 90,
+            'Petty Crimes': 2,
+            'Petty Crimes in Last Week': 14,
+            'Petty Crimes in Last Month': 60
+        }.items():
+            self.assertEqual(time_series.iloc[0][col_name], expected_val)
+
+
+
+
+
