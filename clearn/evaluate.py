@@ -247,14 +247,18 @@ def report_rankings(rankings):
 
     """
     to_json = {}
-    for area, rank_obj in rankings:
-        # Turn ranking objects into dicts for easy serialization with JSON
-        # class
+    for area, rank_obj in rankings.items():
+        if rank_obj is None:
+            raise ValueError("Supplied no ranking for " + area)
+
+        if rank_obj.ranks is None or rank_obj.accuracy is None:
+            raise ValueError("Ranking() for " + area + " is missing information.")
+
         rank_hash = {}
         rank_hash['ranks'] = rank_obj.ranks
         rank_hash['accuracy'] = rank_obj.accuracy
         to_json[area] = rank_hash
 
-    output_file = open('results.json')
+    output_file = open('results.json', 'w')
     json.dump(to_json, output_file)
     output_file.close()
