@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-from clearn.predict import SequentialPredictor
+from clearn.predict import SequentialPredictor, BaselinePredictor, NonsequentialPredictor
 
 
 class SequentialTests(unittest.TestCase):
@@ -44,3 +44,29 @@ class SequentialTests(unittest.TestCase):
         processed_column = processed_dict['Edgewater']['Violent Crime Committed?'].values
         # [True, False] should become [1, 0]
         self.assertEqual(list(processed_column), [1, 0])
+
+
+class BaselineTests(unittest.TestCase):
+    def test_preprocess(self):
+        test_dict = {
+            'Chicago': 'some_data',
+            'Edgewater': pd.DataFrame({
+                'Violent Crime Committed?': [True, False],
+                'Irrelevant': ['right', 'meow']
+            })
+        }
+        processed = BaselinePredictor.preprocess(test_dict)
+
+        # Baseline's preprocess should strip out city-wide data...
+        self.assertNotIn('Chicago', processed)
+        # but it should leave in community area data.
+        self.assertIn('Edgewater', processed)
+
+        # It should strip out every column from the community areas' data frames...
+        self.assertNotIn('Irrelevant', processed['Edgewater'])
+        # except for 'Violent Crime Committed?'.
+        self.assertIn('Violent Crime Committed?', processed['Edgewater'])
+
+
+class NonsequentialTests(unittest.TestCase):
+    pass
