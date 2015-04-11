@@ -1,42 +1,34 @@
 import unittest
 import pandas as pd
-import datetime
-from . import predict
+from clearn import predict
+
 
 class MarkovTests(unittest.TestCase):
+    def setUp(self):
+        # Create index of 32 dates from arbitrary start point
+        date_sequence = pd.date_range('1/1/2011', periods=32, freq='D')
+        # Try to predict the last date in the sequence
+        self.date_to_predict = date_sequence[-1]
+        self.df = pd.DataFrame(index=date_sequence)
     
     def test_series_with_all_violent_days(self):
-        crime_sequence = [1]*32
-        date = datetime.date.today()
-        date_sequence = [date - datetime.timedelta(days=32-x) for x in range(0, 32)]
-        df = pd.DataFrame(crime_sequence,index=date_sequence)
-        df.columns=['Violent Crime Committed?']
-        result = predict.sequential(df,date)
-        self.assertEqual(result, 1)
+        # 1 means a violent crime was committed
+        self.df['Violent Crime Committed?'] = [1]*32
+        prediction = predict.sequential(self.df, self.date_to_predict)
+        self.assertEqual(prediction, 1)
 
     def test_series_with_no_violent_days(self):
-        crime_sequence = [0]*32
-        date = datetime.date.today()
-        date_sequence = [date - datetime.timedelta(days=32-x) for x in range(0,32)]
-        df = pd.DataFrame(crime_sequence,index=date_sequence)
-        df.columns=['Violent Crime Committed?']
-        result = predict.sequential(df,date)
-        self.assertEqual(result, 0)
+        # 0 Means no violent crime was committed
+        self.df['Violent Crime Committed?'] = [0]*32
+        prediction = predict.sequential(self.df, self.date_to_predict)
+        self.assertEqual(prediction, 0)
 
     def test_series_with_one_violent_day(self):
-        crime_sequence = [0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        date = datetime.date.today()
-        date_sequence = [date - datetime.timedelta(days=32-x) for x in range(0, 32)]
-        df = pd.DataFrame(crime_sequence,index=date_sequence)
-        df.columns=['Violent Crime Committed?']
-        result = predict.sequential(df,date)
-        self.assertEqual(result, 0)
+        self.df['Violent Crime Committed?'] = [0, 0, 1] + [0]*29
+        prediction = predict.sequential(self.df, self.date_to_predict)
+        self.assertEqual(prediction, 0)
 
     def test_series_with_one_nonviolent_day(self):
-        crime_sequence = [1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        date = datetime.date.today()
-        date_sequence = [date - datetime.timedelta(days=32-x) for x in range(0, 32)]
-        df = pd.DataFrame(crime_sequence,index=date_sequence)
-        df.columns=['Violent Crime Committed?']
-        result = predict.sequential(df,date)
-        self.assertEqual(result, 1)
+        self.df['Violent Crime Committed?'] = [1, 1, 0] + [1]*29
+        prediction = predict.sequential(self.df, self.date_to_predict)
+        self.assertEqual(prediction, 1)
