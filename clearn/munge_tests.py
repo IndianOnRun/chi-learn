@@ -3,6 +3,7 @@ import csv
 import pandas as pd
 from clearn import munge
 from clearn import clearn_path
+from datetime import date
 
 
 class TestTimestampCreation(unittest.TestCase):
@@ -13,7 +14,7 @@ class TestTimestampCreation(unittest.TestCase):
 
     def test_column_names(self):
         # Timestamps data frames shall have precisely these columns
-        expected_column_names = set(['Primary Type', 'Community Area', 'Arrest', 'Domestic'])
+        expected_column_names = {'Primary Type', 'Community Area', 'Arrest', 'Domestic'}
         actual_column_names = set(self.timestamps.columns)
         self.assertEqual(expected_column_names, actual_column_names)
 
@@ -98,15 +99,47 @@ class TestTimestampCreation(unittest.TestCase):
         """
         return (arr1 == arr2).all()
 
+
 class TestMakeDays(unittest.TestCase):
+    def setUp(self):
+        # This fixture has records of two crimes committed on the same day in Humboldt Park
+        fixture_path = clearn_path('data/fixtures/humboldtTwoCrimes.csv')
+        data_frame = pd.read_csv(fixture_path)
+        timestamps = munge.make_clean_timestamps(data_frame)
+        self.time_series = munge.make_series_of_days_from_timestamps(timestamps)
+
     def test_index(self):
-        pass
+        # Since both crimes were committed on the same day,
+        # resampling by day should have reduced the time series to one element
+        self.assertEqual(len(self.time_series), 1)
+
+        # The crimes were committed on Feb 27, 2015
+        expected_date = date(2015, 2, 27)
+        observed_date = self.time_series.index[0].date()
+        self.assertEqual(expected_date, observed_date)
 
     def test_column_names(self):
-        pass
+        # Timeseries data frames shall have precisely these columns
+        expected_column_names = {'Arrest', 'Domestic',
+                                 'Violent Crimes', 'Severe Crimes', 'Minor Crimes', 'Petty Crimes'}
+        actual_column_names = set(self.time_series.columns)
+        self.assertEqual(expected_column_names, actual_column_names)
 
-    def test_known_sample(self):
-        pass
+    def test_summation(self):
+        # When resampling, make_series_of_days_from_timestamps sums types of crimes and boolean values
+        sums = {
+            'Arrest': 2,
+            'Domestic': 1,
+            'Violent Crimes': 1,
+            'Severe Crimes': 0,
+            'Minor Crimes': 0,
+            'Petty Crimes': 1
+        }
+
+        for column_name, sum in sums.items():
+            # Coerce the float value of the only day of the time series to an int
+            # and assert that it is equal to the expected sum
+            self.assertEqual(sum, int(self.time_series[column_name][0]))
 
 
 class TestMasterDict(unittest.TestCase):
