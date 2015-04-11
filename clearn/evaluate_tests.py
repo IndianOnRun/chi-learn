@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import MagicMock
 import csv
 import os
 import json
@@ -81,3 +82,60 @@ class TestReportRankings(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             evaluate.report_rankings(malformed_rankings)
+
+class TestRankingAlgorithm(unittest.TestCase):
+    def setUp(self):
+        self.original_run_z_test = evaluate.run_z_test
+
+    def test_ranking_no_tie(self):
+        evaluate.run_z_test = MagicMock(return_value=1)
+
+        expected_result = {'sequential': 1, 'nonsequential': 2, 'baseline': 3}
+
+        sorted_models = [('sequential', 1), ('nonsequential', 2), ('baseline', 3)]
+        actual_ranking = evaluate.Ranking()
+        total_count = 10
+
+        actual_ranking.ranks['sequential'] = 1
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 1)
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
+
+        self.assertEquals(expected_result, actual_ranking.ranks)
+
+    def test_ranking_with_first_two_tie(self):
+        expected_result = {'sequential': 1, 'nonsequential': 1, 'baseline': 2}
+
+        sorted_models = [('sequential', 1), ('nonsequential', 2), ('baseline', 3)]
+        actual_ranking = evaluate.Ranking()
+        total_count = 10
+
+        actual_ranking.ranks['sequential'] = 1
+
+        evaluate.run_z_test = MagicMock(return_value=0)
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 1)
+
+        evaluate.run_z_test = MagicMock(return_value=1)
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
+
+        self.assertEquals(expected_result, actual_ranking.ranks)
+
+    def test_ranking_three_way_tie(self):
+        evaluate.run_z_test = MagicMock(return_value=0)
+
+        expected_result = {'sequential': 1, 'nonsequential': 1, 'baseline': 1}
+
+        sorted_models = [('sequential', 1), ('nonsequential', 2), ('baseline', 3)]
+        actual_ranking = evaluate.Ranking()
+        total_count = 10
+
+        actual_ranking.ranks['sequential'] = 1
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 1)
+        evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
+
+        self.assertEquals(expected_result, actual_ranking.ranks)
+
+    def tearDown(self):
+        evaluate.run_z_test = self.original_run_z_test
+
+class TestRankingDictCreation(unittest.TestCase):
+    pass

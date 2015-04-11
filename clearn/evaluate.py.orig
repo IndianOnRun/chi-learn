@@ -1,5 +1,11 @@
+<<<<<<< HEAD
+__author__ = 'willengler'
+
+import munge, predict
+=======
 from clearn import munge
 from clearn import predict
+>>>>>>> master
 
 import datetime
 import json
@@ -7,6 +13,8 @@ import math
 import pandas as pd
 import random
 import sys
+
+from sklearn.naive_bayes import GaussianNB
 
 """
 How do we do this?
@@ -30,9 +38,9 @@ def evaluate(num_days, leave_one_out=False):
     Generate a JSON document mapping community area names
         to performance metrics for each algorithm
     """
-    time_series_dict = munge.get_master_dict('crimeSample.csv')
+    time_series_dict = munge.get_master_dict('../data/fixtures/mediumCrimeSample.csv')
     # TODO Better way to get the end date?
-    last_day_of_data = time_series_dict.tail(1).index.to_pydate
+    last_day_of_data = time_series_dict['Edgewater'].tail(1).index.to_pydatetime()[0].date()
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
     # crimes), we subtract one
@@ -46,8 +54,9 @@ def evaluate(num_days, leave_one_out=False):
         days_to_predict = pick_days(num_days, end_date)
 
     # Get dicts mapping comm area to accuracy on that area
-    seq_accuracy = get_sequential_accuracy(time_series_dict, days_to_predict)
+    #seq_accuracy = get_sequential_accuracy(time_series_dict, days_to_predict)
     nonseq_accuracy = get_nonsequential_accuracy(time_series_dict, days_to_predict)
+    seq_accuracy = seq_accuracy
     baseline_accuracy = get_baseline_accuracy(time_series_dict, days_to_predict)
 
     rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, len(days_to_predict))
@@ -76,7 +85,7 @@ and returns:
 def get_sequential_accuracy(time_series_dict, days_to_predict):
     sequential_series = predict.sequential_preprocess(time_series_dict)
     area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
+    for area, dataframe in sequential_series.items():
         number_correct_predictions = 0
 
         for day in days_to_predict:
@@ -93,11 +102,11 @@ def get_sequential_accuracy(time_series_dict, days_to_predict):
 def get_nonsequential_accuracy(time_series_dict, days_to_predict):
     non_sequential_series = predict.nonsequential_preprocess(time_series_dict)
     area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
+    for area, dataframe in non_sequential_series.items():
         number_correct_predictions = 0
 
         for day in days_to_predict:
-            predicted_result, prob = predict.nonsequential(dataframe, day)
+            predicted_result, prob = predict.nonsequential(dataframe, day, GaussianNB())
             # Assume that prediction is stored in same date rather than the next
             # day (punt this work to pre-processing)
             actual_result = dataframe['Violent Crime Committed?'][day]
@@ -112,7 +121,7 @@ def get_baseline_accuracy(time_series_dict, days_to_predict):
     baseline_series = predict.baseline_preprocess(time_series_dict)
 
     area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
+    for area, dataframe in baseline_series.items():
         number_correct_predictions = 0
 
         for day in days_to_predict:
@@ -188,9 +197,9 @@ def find_ranking(ranking, sorted_models, total_count, second_index):
 
     # ... and assign rankings
     if model_comparison == 1:
-        ranking.ranks[sorted_models[second_index][0]] = ranking.ranks[sorted_models[first_index][0]] + 1
+        ranking.ranks[sorted_models[second_index][0]] = second_index + 1
     elif model_comparison == 0:
-        ranking.ranks[sorted_models[second_index][0]] = ranking.ranks[sorted_models[first_index][0]]
+        ranking.ranks[sorted_models[second_index][0]] = second_index
     else:
         sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for third model')
 
@@ -204,15 +213,6 @@ and returns:
     and 1 if first is significantly better than second (using 95% confidence)
 """
 def run_z_test(first_accuracy, second_accuracy, total_count):
-    if first_accuracy < 0:
-        raise ValueError("First accuracy is negative.")
-
-    if second_accuracy < 0:
-        raise ValueError("Second accuracy is negative.")
-
-    if total_count < 1:
-        raise ValueError("Must have a non-zero count for test")
-
     first_wrong = total_count - first_accuracy
     second_wrong = total_count - second_accuracy
     first_error = first_wrong / total_count
@@ -247,18 +247,20 @@ def report_rankings(rankings):
 
     """
     to_json = {}
-    for area, rank_obj in rankings.items():
-        if rank_obj is None:
-            raise ValueError("Supplied no ranking for " + area)
-
-        if rank_obj.ranks is None or rank_obj.accuracy is None:
-            raise ValueError("Ranking() for " + area + " is missing information.")
-
+    for area, rank_obj in rankings:
+        # Turn ranking objects into dicts for easy serialization with JSON
+        # class
         rank_hash = {}
         rank_hash['ranks'] = rank_obj.ranks
         rank_hash['accuracy'] = rank_obj.accuracy
         to_json[area] = rank_hash
 
-    output_file = open('results.json', 'w')
+    output_file = open('results.json')
     json.dump(to_json, output_file)
     output_file.close()
+
+def main():
+    evaluate(100)
+
+if __name__ == '__main__':
+    main()
