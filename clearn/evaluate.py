@@ -73,14 +73,17 @@ and returns:
     accuracy_by_comm_area: a dict mapping community area names to the number of days correctly classified
 """
 
-def get_sequential_accuracy(time_series_dict, days_to_predict):
-    sequential_series = predict.sequential_preprocess(time_series_dict)
+def get_predictor_accuracy(time_series_dict, days_to_predict, predictor_to_use):
+    processed_time_series_dict = predictor_to_use.preprocess(time_series_dict)
+
+    predictor = predictor_to_use(processed_time_series_dict)
+
     area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
+    for area, dataframe in processed_time_series_dict:
         number_correct_predictions = 0
 
         for day in days_to_predict:
-            predicted_result, prob = predict.sequential(dataframe, day)
+            predicted_result = predictor.predict(day)
             # Assume that this is store
             actual_result = dataframe['Violent Crime Committed?'][day]
             if actual_result == predicted_result:
@@ -90,42 +93,6 @@ def get_sequential_accuracy(time_series_dict, days_to_predict):
 
     return area_to_performance_map
 
-def get_nonsequential_accuracy(time_series_dict, days_to_predict):
-    non_sequential_series = predict.nonsequential_preprocess(time_series_dict)
-    area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
-        number_correct_predictions = 0
-
-        for day in days_to_predict:
-            predicted_result, prob = predict.nonsequential(dataframe, day)
-            # Assume that prediction is stored in same date rather than the next
-            # day (punt this work to pre-processing)
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
-
-        area_to_performance_map[area] = number_correct_predictions
-
-    return area_to_performance_map
-
-def get_baseline_accuracy(time_series_dict, days_to_predict):
-    baseline_series = predict.baseline_preprocess(time_series_dict)
-
-    area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
-        number_correct_predictions = 0
-
-        for day in days_to_predict:
-            predicted_result, prob = predict.baseline(dataframe, day)
-            # Assume that prediction is stored in same date rather than the next
-            # day (punt this work to pre-processing)
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
-
-        area_to_performance_map[area] = number_correct_predictions
-
-    return area_to_performance_map
 
 class Ranking:
     def __init__(self):
