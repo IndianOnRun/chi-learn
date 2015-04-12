@@ -1,10 +1,15 @@
 from clearn import clearn_path
 from clearn import evaluate
+from clearn.predict import NonsequentialPredictor
 from unittest.mock import MagicMock
+from unittest.mock import patch
 import copy
+import datetime
 import json
 import os
 import unittest
+import pandas as pd
+import numpy as np
 
 
 class TestZTest(unittest.TestCase):
@@ -186,3 +191,46 @@ class TestRankingDictCreation(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)
+
+@patch.object(NonsequentialPredictor, 'predict', new={lambda day: True})
+class TestPredictorAreaAccuracy(unittest.TestCase):
+    def setUp(self):
+        self.predictor = NonsequentialPredictor
+
+    def test_predictor_accuracy_in_area_all_correct(self):
+        expected_true_days = 100
+
+        # Generate a random dataframe with only the required column
+        dataframe = pd.DataFrame({'Violent Crime Committed?': True, 'Other data': np.random.randn(100)})
+
+        # Generate a range of dates; we've tested this function separately.
+        days_to_predict = evaluate.pick_days(100, datetime.date(2015,1,1))
+
+        actual_true_days = evaluate.get_predictor_accuracy_in_area(dataframe, days_to_predict, self.predictor)
+
+        self.assertEquals(expected_true_days, actual_true_days)
+
+class TestHelperFunctions(unittest.TestCase):
+    def test_get_all_days_in_range(self):
+        expected_date_range = [datetime.date(2005, 1, 1), datetime.date(2005, 1, 2), datetime.date(2005, 1, 3)]
+
+        actual_date_range = evaluate.get_all_days(datetime.date(2005, 1, 1), datetime.date(2005, 1, 3))
+
+        for index, timestamp in enumerate(actual_date_range):
+            self.assertEquals(timestamp.date(), expected_date_range[index])
+
+    def test_get_all_days_invalid_range(self):
+        with self.assertRaises(ValueError):
+            evaluate.get_all_days(datetime.date(2005, 1, 3), datetime.date(2005, 1, 1))
+
+    def test_pick_days_valid(self):
+        date_range = evaluate.pick_days(10, datetime.date(2007, 1, 1))
+        sorted_dates = sorted(date_range)
+
+        # Make sure we got the right number
+        self.assertEquals(len(date_range), 10)
+
+        # Make sure all elements are unique.  If there aren't,
+        # the actual list will have fewer elements than the set
+        # version of the list (eliminates duplicates)
+        self.assertTrue(len(date_range) == len(set(date_range)))

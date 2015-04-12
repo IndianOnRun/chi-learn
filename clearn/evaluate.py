@@ -31,7 +31,6 @@ def evaluate(num_days, leave_one_out=False):
         to performance metrics for each algorithm
     """
     time_series_dict = munge.get_master_dict('crimeSample.csv')
-    # TODO Better way to get the end date?
     last_day_of_data = time_series_dict.tail(1).index.to_pydate
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
@@ -64,10 +63,13 @@ def get_all_days(start_date, end_date):
         the start of evaluation and the end
     """
     # date_range uses inclusive date endpoints.
+    if end_date < start_date:
+        raise ValueError("End date should be after start date")
+
     return pd.date_range(start_date, end_date).tolist()
 
 """
-get_[sequential, nonsequential, baseline]_accuracy takes:
+get_predictor_accuracy takes:
     days_to_predict: a list of datetimes on which to generate and test predictions
 and returns:
     accuracy_by_comm_area: a dict mapping community area names to the number of days correctly classified
@@ -76,22 +78,24 @@ and returns:
 def get_predictor_accuracy(time_series_dict, days_to_predict, predictor_to_use):
     processed_time_series_dict = predictor_to_use.preprocess(time_series_dict)
 
-    predictor = predictor_to_use(processed_time_series_dict)
-
     area_to_performance_map = {}
-    for area, dataframe in processed_time_series_dict:
-        number_correct_predictions = 0
-
-        for day in days_to_predict:
-            predicted_result = predictor.predict(day)
-            # Assume that this is store
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
-
-        area_to_performance_map[area] = number_correct_predictions
+    for area, dataframe in processed_time_series_dict.items():
+        area_to_performance_map[area] = get_predictor_accuracy_in_area(dataframe, days_to_predict, predictor_to_use)
 
     return area_to_performance_map
+
+def get_predictor_accuracy_in_area(dataframe, days_to_predict, predictor_to_use):
+    predictor = predictor_to_use(dataframe)
+
+    number_correct_predictions = 0
+
+    for day in days_to_predict:
+        predicted_result = predictor.predict(day)
+        actual_result = dataframe['Violent Crime Committed?'][day]
+        if actual_result == predicted_result:
+            number_correct_predictions += 1
+
+    return number_correct_predictions
 
 
 class Ranking:
