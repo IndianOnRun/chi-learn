@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import date
 import csv
 import pickle
 from clearn import clearn_path
@@ -40,9 +41,10 @@ def make_master_dict(csv_path):
     timestamps = make_clean_timestamps(data_frame)
     # From crime timestamps, create dictionary mapping community area names
     #   to pandas data frames resampled by day
-    days_by_area = get_days_by_area(timestamps)
+    latest_day = timestamps.index[-1]
+    days_by_area = get_days_by_area(timestamps, latest_day)
     # Add an extra mapping to include what happened in all of Chicago on each day
-    days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps)
+    days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps, latest_day)
     return days_by_area
 
 
@@ -107,11 +109,11 @@ def make_cols_categorical(data_frame, col_names):
 """ Used in get_days_by_area() """
 
 
-def get_days_by_area(timestamps):
+def get_days_by_area(timestamps, latest_day):
     days_by_area = {}
     grouped = timestamps.groupby('Community Area')
     for name, frame in grouped:
-        area_days = make_series_of_days_from_timestamps(frame)
+        area_days = make_series_of_days_from_timestamps(frame, latest_day)
         area_days['Violent Crime Committed?'] = area_days['Violent Crimes'].map(lambda num_crimes: num_crimes > 0)
         area_days = extract_time_features(area_days)
         days_by_area[name] = area_days
@@ -127,9 +129,9 @@ def extract_time_features(days):
 """ Used in make_series_of_days_from_timestamps() """
 
 
-def make_series_of_days_from_timestamps(timestamps):
+def make_series_of_days_from_timestamps(timestamps, latest_day):
     timestamps = extract_severity_counts(timestamps)
-    days = resample_by_day(timestamps)
+    days = resample_by_day(timestamps, latest_day)
     return days
 
 
@@ -139,7 +141,9 @@ def extract_severity_counts(timestamps):
     return timestamps
 
 
-def resample_by_day(timestamps):
+def resample_by_day(timestamps, latest_day):
     days = timestamps.resample('D', how='sum')
+    common_index = pd.date_range(date(2001, 1, 1), latest_day)
+    days = days.reindex(index=common_index)
     days = days.fillna(0)
     return days

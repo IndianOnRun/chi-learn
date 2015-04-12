@@ -106,17 +106,19 @@ class TestMakeDays(unittest.TestCase):
         fixture_path = clearn_path('data/fixtures/humboldtTwoCrimes.csv')
         data_frame = pd.read_csv(fixture_path)
         timestamps = munge.make_clean_timestamps(data_frame)
-        self.time_series = munge.make_series_of_days_from_timestamps(timestamps)
+        latest_day = timestamps.index[-1]
+        self.time_series = munge.make_series_of_days_from_timestamps(timestamps, latest_day)
 
     def test_index(self):
-        # Since both crimes were committed on the same day,
-        # resampling by day should have reduced the time series to one element
-        self.assertEqual(len(self.time_series), 1)
+        index = self.time_series.index
+        # Resampling by day should produce a time series with one element for each day from Jan 1, 2001
+        # to Feb 27, 2015, the day the fixture's crimes were committed on
+        expected_start = date(2001, 1, 1)
+        self.assertEqual(expected_start, index[0].to_datetime().date())
+        expected_end = date(2015, 2, 27)
+        self.assertEqual(expected_end, index[-1].to_datetime().date())
 
-        # The crimes were committed on Feb 27, 2015
-        expected_date = date(2015, 2, 27)
-        observed_date = self.time_series.index[0].date()
-        self.assertEqual(expected_date, observed_date)
+        self.assertEqual(len(self.time_series.index), (expected_end - expected_start).days + 1)
 
     def test_column_names(self):
         # Timeseries data frames shall have precisely these columns
@@ -137,9 +139,9 @@ class TestMakeDays(unittest.TestCase):
         }
 
         for column_name, sum in sums.items():
-            # Coerce the float value of the only day of the time series to an int
+            # Coerce the float value of the last day of the time series to an int
             # and assert that it is equal to the expected sum
-            self.assertEqual(sum, int(self.time_series[column_name][0]))
+            self.assertEqual(sum, int(self.time_series[column_name][-1]), 'Failed on ' + column_name)
 
 
 class TestMasterDict(unittest.TestCase):
@@ -164,3 +166,7 @@ class TestMasterDict(unittest.TestCase):
 
     def test_chicago_present(self):
         self.assertIn('Chicago', self.master_dict.keys())
+
+    def test_each_time_series_has_same_length(self):
+        lengths = [len(time_series) for time_series in self.master_dict.values()]
+        self.assertTrue(all([length == lengths[0] for length in lengths]))
