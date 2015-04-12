@@ -1,26 +1,26 @@
 import pandas as pd
 import csv
+from clearn import clearn_path
 
 
-def make_raw_data_target_pairs(data_csv_path):
-    frames_by_area = make_training_set(data_csv_path)
-    pairs = {}
-    for area in frames_by_area:
-        # Chop off the first target value (was a violent crime committed today?)
-        # and the last feature vector
-        # so that day x's feature value is aligned with day x+1's classification
-        frame = frames_by_area[area]
-        raw_targets = frame['Violent Crime Committed?'][1:]
-        del frame['Violent Crime Committed?']
-        raw_data = frame.values[:-1]
-        pairs[area] = (raw_data, raw_targets)
-    return pairs
+def get_master_dict(csv_path):
+    """
 
-
-def make_training_set(data_csv_path):
-    data_frame = pd.read_csv(data_csv_path)
+    Returns dictionary mapping each community area name and the city of chicago (key='Chicago')
+    to pandas dataframes. THe dataframes are indexed by day and have the following columns:
+    ['Arrest', 'Domestic', 'Violent Crimes', 'Severe Crimes', 'Minor Crimes', 'Petty Crimes', 'Violent Crime Committed?', 'Month', 'Weekday']
+    There is one exception. The Chicago dataframe does not have the 'Month' and 'Weekday' column.
+    """
+    # Transform csv to Pandas data frame
+    data_frame = pd.read_csv(csv_path)
+    # Drop unnecessary columns and reidex crimes by date
     timestamps = make_clean_timestamps(data_frame)
-    return make_feature_vectors(timestamps)
+    # From crime timestamps, create dictionary mapping community area names
+    #   to pandas data frames resampled by day
+    days_by_area = get_days_by_area(timestamps)
+    # Add an extra mapping to include what happened in all of Chicago on each day
+    days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps)
+    return days_by_area
 
 
 """ Used in make_clean_timestamps() """
@@ -29,7 +29,7 @@ def make_training_set(data_csv_path):
 def make_clean_timestamps(data_frame):
     data_frame = drop_all_columns_but(data_frame, ['Date', 'Primary Type', 'Community Area', 'Arrest', 'Domestic'])
     data_frame = convert_comm_area_nums_to_names(data_frame)
-    data_frame = transform_from_csv(data_frame, 'Primary Type', '../config/crime_bins.csv')
+    data_frame = transform_from_csv(data_frame, 'Primary Type', clearn_path('config/crime_bins.csv'))
     timestamps = reindex_by_date(data_frame)
     timestamps = make_cols_categorical(timestamps, ['Primary Type', 'Community Area'])
     return timestamps
@@ -51,7 +51,7 @@ def convert_comm_area_nums_to_names(data_frame):
     data_frame = data_frame[data_frame['Community Area'] > 0]
     # Convert numbers to strings for easy binning
     data_frame['Community Area'] = data_frame['Community Area'].map(lambda num: str(int(num)))
-    data_frame = transform_from_csv(data_frame, 'Community Area', '../config/community_areas.csv')
+    data_frame = transform_from_csv(data_frame, 'Community Area', clearn_path('config/community_areas.csv'))
     return data_frame
 
 
@@ -77,59 +77,32 @@ def make_cols_categorical(data_frame, col_names):
     return data_frame
 
 
-""" Used in make_feature_vectors() """
-
-
-def make_feature_vectors(timestamps):
-    days_by_area = get_days_by_area(timestamps)
-    days_pan_city = make_series_of_days_from_timestamps(timestamps)
-    concatenated_days_by_area = concat_areas_with_city(days_pan_city, days_by_area)
-    concatenated_days_by_area = remove_days_without_rolling_sum(concatenated_days_by_area)
-    return concatenated_days_by_area
+""" Used in get_days_by_area() """
 
 
 def get_days_by_area(timestamps):
     days_by_area = {}
     grouped = timestamps.groupby('Community Area')
     for name, frame in grouped:
-        area_days = make_series_of_days_from_timestamps(frame, include_time_features=True)
+        area_days = make_series_of_days_from_timestamps(frame)
         area_days['Violent Crime Committed?'] = area_days['Violent Crimes'].map(lambda num_crimes: num_crimes > 0)
+        area_days = extract_time_features(area_days)
         days_by_area[name] = area_days
     return days_by_area
 
 
-def concat_areas_with_city(days_pan_city, days_by_area):
-    new_column_names = ['Chicago ' + old_name for old_name in list(days_pan_city)]
-    days_pan_city.columns = new_column_names
-    concatenated_days_by_area = {}
-    for area in days_by_area:
-        area_days = days_by_area[area]
-        concatenated_days_by_area[area] = area_days.join(days_pan_city)
-    return concatenated_days_by_area
-
-
-def extract_features_from_data_frame(crimes_by_area):
-    feature_vectors_by_area = {}
-    for area in crimes_by_area:
-        feature_vectors_by_area[area] = crimes_by_area[area].values
-    return feature_vectors_by_area
-
-
-def remove_days_without_rolling_sum(concatenated_days_by_area):
-    for area in concatenated_days_by_area:
-        concatenated_days_by_area[area] = concatenated_days_by_area[area][30:]
-    return concatenated_days_by_area
-
+def extract_time_features(days):
+    days['Month'] = days.index.map(lambda stamp: stamp.month)
+    days['Weekday'] = days.index.map(lambda stamp: stamp.weekday())
+    days = make_cols_categorical(days, ['Month', 'Weekday'])
+    return days
 
 """ Used in make_series_of_days_from_timestamps() """
 
 
-def make_series_of_days_from_timestamps(timestamps, include_time_features=False):
+def make_series_of_days_from_timestamps(timestamps):
     timestamps = extract_severity_counts(timestamps)
     days = resample_by_day(timestamps)
-    if include_time_features:
-        days = extract_time_features(days)
-    days = extract_windows(days)
     return days
 
 
@@ -142,18 +115,4 @@ def extract_severity_counts(timestamps):
 def resample_by_day(timestamps):
     days = timestamps.resample('D', how='sum')
     days = days.fillna(0)
-    return days
-
-
-def extract_time_features(days):
-    days['Month'] = days.index.map(lambda stamp: stamp.month)
-    days['Weekday'] = days.index.map(lambda stamp: stamp.weekday())
-    days = make_cols_categorical(days, ['Month', 'Weekday'])
-    return days
-
-
-def extract_windows(days):
-    for label in ['Violent', 'Severe', 'Minor', 'Petty']:
-        days[label + ' Crimes in Last Week'] = pd.rolling_sum(days[label + ' Crimes'], 7)
-        days[label + ' Crimes in Last Month'] = pd.rolling_sum(days[label + ' Crimes'], 30)
     return days
