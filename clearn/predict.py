@@ -50,6 +50,7 @@ class SequentialPredictor(Predictor):
         self.time_series = time_series
 
     def predict(self, day_to_predict):
+        return True
         # Get records of 30 days before day_to_predict
         previous_thirty_days = get_previous_month(self.time_series, day_to_predict)
         binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
@@ -135,7 +136,7 @@ class NonsequentialPredictor(Predictor):
         feature_vec_to_classify = training_frame.tail(1).values
 
         # Even though we're only making one prediction, sklearn expects to receive and output list-like data structures
-        prediction = trained_model.predict([feature_vec_to_classify])[0]
+        prediction = trained_model.predict(feature_vec_to_classify)[0]
         return prediction
 
     @staticmethod
