@@ -109,7 +109,7 @@ class TestRankingAlgorithm(unittest.TestCase):
         evaluate.find_ranking(actual_ranking, sorted_models, total_count, 1)
         evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
 
-        self.assertEquals(expected_result, actual_ranking.ranks)
+        self.assertEqual(expected_result, actual_ranking.ranks)
 
     def test_ranking_with_first_two_tie(self):
         expected_result = {'sequential': 1, 'nonsequential': 1, 'baseline': 2}
@@ -126,7 +126,7 @@ class TestRankingAlgorithm(unittest.TestCase):
         evaluate.run_z_test = MagicMock(return_value=1)
         evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
 
-        self.assertEquals(expected_result, actual_ranking.ranks)
+        self.assertEqual(expected_result, actual_ranking.ranks)
 
     def test_ranking_three_way_tie(self):
         evaluate.run_z_test = MagicMock(return_value=0)
@@ -141,7 +141,7 @@ class TestRankingAlgorithm(unittest.TestCase):
         evaluate.find_ranking(actual_ranking, sorted_models, total_count, 1)
         evaluate.find_ranking(actual_ranking, sorted_models, total_count, 2)
 
-        self.assertEquals(expected_result, actual_ranking.ranks)
+        self.assertEqual(expected_result, actual_ranking.ranks)
 
     def tearDown(self):
         evaluate.run_z_test = self.original_run_z_test
@@ -214,12 +214,12 @@ class TestPredictorAccuracy(unittest.TestCase):
         resulting_dict = evaluate.get_predictor_accuracy(initial_dict, days_to_predict, self.predictor)
 
         # Make sure we spit out a dict with the same keys
-        self.assertEquals(initial_dict.keys(), resulting_dict.keys())
+        self.assertEqual(initial_dict.keys(), resulting_dict.keys())
 
         # Make sure the values of said keys are the number correctly
         # predicted
         for _, correct_predictions in resulting_dict.items():
-            self.assertEquals(correct_predictions, 100)
+            self.assertEqual(correct_predictions, 100)
 
     def test_invalid_predictor(self):
         with self.assertRaises(ValueError):
@@ -240,7 +240,7 @@ class TestPredictorAreaAccuracy(unittest.TestCase):
         expected_true_days = 100
         actual_true_days = self.get_actual_true_days()
 
-        self.assertEquals(expected_true_days, actual_true_days)
+        self.assertEqual(expected_true_days, actual_true_days)
 
     def test_predictor_accuracy_in_area_some_correct(self):
         # Generate a list of values to use as return values for the
@@ -251,7 +251,7 @@ class TestPredictorAreaAccuracy(unittest.TestCase):
         expected_true_days = 50
         actual_true_days = self.get_actual_true_days()
 
-        self.assertEquals(expected_true_days, actual_true_days)
+        self.assertEqual(expected_true_days, actual_true_days)
 
     def test_predict_too_many_days(self):
         days_to_predict = evaluate.pick_days(100, datetime.date(2007,1,1))
@@ -282,7 +282,7 @@ class TestHelperFunctions(unittest.TestCase):
         actual_date_range = evaluate.get_all_days(datetime.date(2005, 1, 1), datetime.date(2005, 1, 3))
 
         for index,timestamp in enumerate( actual_date_range ):
-            self.assertEquals(timestamp.date(), expected_date_range[index])
+            self.assertEqual(timestamp.date(), expected_date_range[index])
 
     def test_get_all_days_invalid_range(self):
         with self.assertRaises(ValueError):
@@ -293,7 +293,7 @@ class TestHelperFunctions(unittest.TestCase):
         sorted_dates = sorted(date_range)
 
         # Make sure we got the right number
-        self.assertEquals(len(date_range), 10)
+        self.assertEqual(len(date_range), 10)
 
         # Make sure all elements are unique.  If there aren't,
         # the actual list will have fewer elements than the set
