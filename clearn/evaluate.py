@@ -66,7 +66,9 @@ def get_all_days(start_date, end_date):
     if end_date < start_date:
         raise ValueError("End date should be after start date")
 
-    return pd.date_range(start_date, end_date).tolist()
+    timestamps = pd.date_range(start_date, end_date).tolist()
+
+    return [timestamp for timestamp in timestamps]
 
 """
 get_predictor_accuracy takes:
@@ -76,6 +78,9 @@ and returns:
 """
 
 def get_predictor_accuracy(time_series_dict, days_to_predict, predictor_to_use):
+    if not issubclass(predictor_to_use, predict.Predictor):
+        raise ValueError("Please pass in a valid predictor.")
+
     processed_time_series_dict = predictor_to_use.preprocess(time_series_dict)
 
     area_to_performance_map = {}
@@ -87,11 +92,24 @@ def get_predictor_accuracy(time_series_dict, days_to_predict, predictor_to_use):
 def get_predictor_accuracy_in_area(dataframe, days_to_predict, predictor_to_use):
     predictor = predictor_to_use(dataframe)
 
+    last_date = dataframe.index[-1].date()
+
+    days_to_predict.sort()
+    first_predicted_date = days_to_predict[0].date()
+    last_predicted_date = days_to_predict[-1].date()
+
+    # Don't start predicting before 2005
+    if first_predicted_date < datetime.date(2005,1,1):
+        raise ValueError("Don't predict dates before 2005")
+
+    if last_predicted_date > last_date:
+        raise ValueError("Can't predict beyond our last data point")
+
     number_correct_predictions = 0
 
     for day in days_to_predict:
         predicted_result = predictor.predict(day)
-        actual_result = dataframe['Violent Crime Committed?'][day]
+        actual_result = dataframe['Violent Crime Committed?'].loc[day]
         if actual_result == predicted_result:
             number_correct_predictions += 1
 

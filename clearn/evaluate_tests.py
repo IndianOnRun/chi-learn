@@ -11,6 +11,8 @@ import unittest
 import pandas as pd
 import numpy as np
 
+class TestEvaluate(unittest.TestCase):
+    pass
 
 class TestZTest(unittest.TestCase):
     def test_with_first_significantly_better(self):
@@ -192,23 +194,86 @@ class TestRankingDictCreation(unittest.TestCase):
         with self.assertRaises(ValueError):
             area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)
 
-@patch.object(NonsequentialPredictor, 'predict', new={lambda day: True})
+class TestPredictorAccuracy(unittest.TestCase):
+    def setUp(self):
+        self.backup_preprocess = NonsequentialPredictor.preprocess
+        self.backup_accuracy = evaluate.get_predictor_accuracy_in_area
+
+        # Make preprocessing an identity function
+        NonsequentialPredictor.preprocess = lambda dict: dict
+        self.predictor = NonsequentialPredictor
+
+        # Have accuracy always return 100 correct predictions
+        evaluate.get_predictor_accuracy_in_area = lambda x, y, z: 100
+
+    def test_get_accuracy(self):
+        days_to_predict = pd.date_range(datetime.date(2001,1,1), datetime.date(2001, 1, 5))
+        dataframe = pd.DataFrame({'Violent Crimes Committed?': True}, index=days_to_predict)
+        initial_dict = {'Pittsburgh': dataframe, 'Philidelphia': dataframe}
+
+        resulting_dict = evaluate.get_predictor_accuracy(initial_dict, days_to_predict, self.predictor)
+
+        # Make sure we spit out a dict with the same keys
+        self.assertEquals(initial_dict.keys(), resulting_dict.keys())
+
+        # Make sure the values of said keys are the number correctly
+        # predicted
+        for _, correct_predictions in resulting_dict.items():
+            self.assertEquals(correct_predictions, 100)
+
+    def test_invalid_predictor(self):
+        with self.assertRaises(ValueError):
+            evaluate.get_predictor_accuracy(None, None, evaluate.Ranking)
+
+    def tearDown(self):
+        NonsequentialPredictor.preprocess = self.backup_preprocess
+        evaluate.get_predictor_accuracy_in_area = self.backup_accuracy
+
 class TestPredictorAreaAccuracy(unittest.TestCase):
     def setUp(self):
+        self.backup_predict = NonsequentialPredictor.predict
         self.predictor = NonsequentialPredictor
 
     def test_predictor_accuracy_in_area_all_correct(self):
+        self.predictor.predict = MagicMock(return_value=True)
+
         expected_true_days = 100
-
-        # Generate a random dataframe with only the required column
-        dataframe = pd.DataFrame({'Violent Crime Committed?': True, 'Other data': np.random.randn(100)})
-
-        # Generate a range of dates; we've tested this function separately.
-        days_to_predict = evaluate.pick_days(100, datetime.date(2015,1,1))
-
-        actual_true_days = evaluate.get_predictor_accuracy_in_area(dataframe, days_to_predict, self.predictor)
+        actual_true_days = self.get_actual_true_days()
 
         self.assertEquals(expected_true_days, actual_true_days)
+
+    def test_predictor_accuracy_in_area_some_correct(self):
+        # Generate a list of values to use as return values for the
+        # stubbed function; namely, alternately return True and False
+        alternating_list = np.resize([True, False], 100)
+        self.predictor.predict = MagicMock(side_effect=alternating_list)
+
+        expected_true_days = 50
+        actual_true_days = self.get_actual_true_days()
+
+        self.assertEquals(expected_true_days, actual_true_days)
+
+    def test_predict_too_many_days(self):
+        days_to_predict = evaluate.pick_days(100, datetime.date(2007,1,1))
+        days_for_dataframe = evaluate.get_all_days(datetime.date(2005,1,1), datetime.date(2005, 3, 1))
+        dataframe = pd.DataFrame({'Violent Crime Committed?': True, 'Other data': np.random.randn(60)}, index=days_for_dataframe)
+
+        with self.assertRaises(ValueError):
+            evaluate.get_predictor_accuracy_in_area(dataframe, days_to_predict, self.predictor)
+
+    def get_actual_true_days(self):
+        # Exactly 100 days
+        days_to_predict = evaluate.get_all_days(datetime.date(2005,1,1), datetime.date(2005,4,10))
+
+        # Generate a random dataframe with only the required column
+        # 731 = days in the two years specified above
+        dataframe = pd.DataFrame({'Violent Crime Committed?': True, 'Other data': np.random.randn(100)}, index=days_to_predict)
+
+        # Generate a range of dates; we've tested this function separately.
+        return evaluate.get_predictor_accuracy_in_area(dataframe, days_to_predict, self.predictor)
+
+    def tearDown(self):
+        NonsequentialPredictor.predict = self.backup_predict
 
 class TestHelperFunctions(unittest.TestCase):
     def test_get_all_days_in_range(self):
@@ -216,7 +281,7 @@ class TestHelperFunctions(unittest.TestCase):
 
         actual_date_range = evaluate.get_all_days(datetime.date(2005, 1, 1), datetime.date(2005, 1, 3))
 
-        for index, timestamp in enumerate(actual_date_range):
+        for index,timestamp in enumerate( actual_date_range ):
             self.assertEquals(timestamp.date(), expected_date_range[index])
 
     def test_get_all_days_invalid_range(self):
