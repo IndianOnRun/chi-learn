@@ -106,17 +106,24 @@ class TestMakeDays(unittest.TestCase):
         fixture_path = clearn_path('data/fixtures/humboldtTwoCrimes.csv')
         data_frame = pd.read_csv(fixture_path)
         timestamps = munge.make_clean_timestamps(data_frame)
-        self.time_series = munge.make_series_of_days_from_timestamps(timestamps)
+        latest_day = timestamps.index[-1]
+        self.time_series = munge.make_series_of_days_from_timestamps(timestamps, latest_day)
 
     def test_index(self):
-        # Since both crimes were committed on the same day,
-        # resampling by day should have reduced the time series to one element
-        self.assertEqual(len(self.time_series), 1)
+        # Resampling by day should produce a time series with one element for each day from Jan 1, 2001
+        # to Feb 27, 2015, the day the fixture's crimes were committed on
+        index = self.time_series.index
 
-        # The crimes were committed on Feb 27, 2015
-        expected_date = date(2015, 2, 27)
-        observed_date = self.time_series.index[0].date()
-        self.assertEqual(expected_date, observed_date)
+        # The Chciago dataset begins on Jan 1, 2001
+        expected_start = date(2001, 1, 1)
+        self.assertEqual(expected_start, index[0].to_datetime().date())
+
+        # Each time series should extend to the latest available day in the dataset
+        expected_end = date(2015, 2, 27)
+        self.assertEqual(expected_end, index[-1].to_datetime().date())
+
+        # Every day in between should be present
+        self.assertEqual(len(self.time_series.index), (expected_end - expected_start).days + 1)
 
     def test_column_names(self):
         # Timeseries data frames shall have precisely these columns
@@ -137,15 +144,15 @@ class TestMakeDays(unittest.TestCase):
         }
 
         for column_name, sum in sums.items():
-            # Coerce the float value of the only day of the time series to an int
+            # Coerce the float value of the last day of the time series to an int
             # and assert that it is equal to the expected sum
-            self.assertEqual(sum, int(self.time_series[column_name][0]))
+            self.assertEqual(sum, int(self.time_series[column_name][-1]), 'Failed on ' + column_name)
 
 
 class TestMasterDict(unittest.TestCase):
     def setUp(self):
         fixture_path = clearn_path('data/fixtures/mediumCrimeSample.csv')
-        self.master_dict = munge.get_master_dict(fixture_path)
+        self.master_dict = munge.make_master_dict(fixture_path)
 
     def test_all_community_areas_present(self):
         # The community_areas csv should map community area numbers to names
@@ -165,11 +172,7 @@ class TestMasterDict(unittest.TestCase):
     def test_chicago_present(self):
         self.assertIn('Chicago', self.master_dict.keys())
 
-    '''
-    I considered adding test_all_frames_have_same_number_of_days.
-    There is an edge case where if every community area is not represented on the last day of
-        the dataframe you use to generate the master dict,
-        then the way we create pandas timeseries will leave some community areas with fewer days.
-    However, it so happens that all community areas are represented on January 1, 2001 which will always be
-        the earliest day for our application.
-    '''
+    def test_each_time_series_has_same_length(self):
+        # Each time series in the master dict should start and end on the same day
+        lengths = [len(time_series) for time_series in self.master_dict.values()]
+        self.assertTrue(all([length == lengths[0] for length in lengths]))

@@ -60,9 +60,13 @@ target/
 venv/
 
 # Ignore the massive raw CSV from the Chicago data portal
-data/Crimes_-_2001_to_present.csv
+clearn/data/Crimes_-_2001_to_present.csv
+
+# Ignore iPython notebooks in project root
+clearn/*.ipynb
 
 # Ignore iPython autosave data
+clearn/.ipynb_checkpoints
 clearn/notebooks/.ipynb_checkpoints
 viewer/notebooks/.ipynb_checkpoints
 

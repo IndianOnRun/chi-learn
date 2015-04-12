@@ -1,27 +1,56 @@
 import pandas as pd
+from datetime import date
 import csv
+import pickle
 from clearn import clearn_path
 
 
-def get_master_dict(csv_path):
-    """
+PICKLE_PATH = clearn_path('data/masterDictionary.pickle')
 
-    Returns dictionary mapping each community area name and the city of chicago (key='Chicago')
+
+def get_master_dict():
+    """
+    Returns master_dict saved to file if it is available.
+    """
+    try:
+        with open(PICKLE_PATH, 'rb') as file:
+            return pickle.load(file)
+    except IOError:
+        print('Unable to open pickled master dictionary. Make sure data/masterDictionary.pickle exists. '
+              'If not, run initialize_master_dict.py from the repository root.')
+        return None
+
+
+def init_master_dict(csv_path):
+    """
+    Creates dictionary mapping each community area name and the city of chicago (key='Chicago')
     to pandas dataframes. THe dataframes are indexed by day and have the following columns:
     ['Arrest', 'Domestic', 'Violent Crimes', 'Severe Crimes', 'Minor Crimes', 'Petty Crimes', 'Violent Crime Committed?', 'Month', 'Weekday']
     There is one exception. The Chicago dataframe does not have the 'Month' and 'Weekday' column.
+
+    Persists master_dict to file.
     """
+    master_dict = make_master_dict(csv_path)
+    persist_master_dict(master_dict)
+
+
+def make_master_dict(csv_path):
     # Transform csv to Pandas data frame
     data_frame = pd.read_csv(csv_path)
     # Drop unnecessary columns and reidex crimes by date
     timestamps = make_clean_timestamps(data_frame)
     # From crime timestamps, create dictionary mapping community area names
     #   to pandas data frames resampled by day
-    days_by_area = get_days_by_area(timestamps)
+    latest_day = timestamps.index[-1]
+    days_by_area = get_days_by_area(timestamps, latest_day)
     # Add an extra mapping to include what happened in all of Chicago on each day
-    days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps)
+    days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps, latest_day)
     return days_by_area
 
+
+def persist_master_dict(master_dict):
+    with open(PICKLE_PATH, 'wb') as file:
+        pickle.dump(master_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 """ Used in make_clean_timestamps() """
 
@@ -80,11 +109,11 @@ def make_cols_categorical(data_frame, col_names):
 """ Used in get_days_by_area() """
 
 
-def get_days_by_area(timestamps):
+def get_days_by_area(timestamps, latest_day):
     days_by_area = {}
     grouped = timestamps.groupby('Community Area')
     for name, frame in grouped:
-        area_days = make_series_of_days_from_timestamps(frame)
+        area_days = make_series_of_days_from_timestamps(frame, latest_day)
         area_days['Violent Crime Committed?'] = area_days['Violent Crimes'].map(lambda num_crimes: num_crimes > 0)
         area_days = extract_time_features(area_days)
         days_by_area[name] = area_days
@@ -100,9 +129,9 @@ def extract_time_features(days):
 """ Used in make_series_of_days_from_timestamps() """
 
 
-def make_series_of_days_from_timestamps(timestamps):
+def make_series_of_days_from_timestamps(timestamps, latest_day):
     timestamps = extract_severity_counts(timestamps)
-    days = resample_by_day(timestamps)
+    days = resample_by_day(timestamps, latest_day)
     return days
 
 
@@ -112,7 +141,17 @@ def extract_severity_counts(timestamps):
     return timestamps
 
 
-def resample_by_day(timestamps):
+def resample_by_day(timestamps, latest_day):
+    # Compress all timestamps in a day to a single row representing the entire day.
+    #   Sum over the column values of each individual timestamp (for bools, True is 1, False is 0)
     days = timestamps.resample('D', how='sum')
+
+    # Every time series should begin and end on the same day
+    common_index = pd.date_range(date(2001, 1, 1), latest_day)
+    days = days.reindex(index=common_index)
+
+    # For days that didn't have any crimes, pandas will fill their fields with N/A by default.
+    # Replace every instance of N/A with 0
     days = days.fillna(0)
+
     return days
