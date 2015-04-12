@@ -31,7 +31,6 @@ def evaluate(num_days, leave_one_out=False):
         to performance metrics for each algorithm
     """
     time_series_dict = munge.get_master_dict()
-    # TODO Better way to get the end date?
     last_day_of_data = time_series_dict.tail(1).index.to_pydate
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
@@ -64,68 +63,58 @@ def get_all_days(start_date, end_date):
         the start of evaluation and the end
     """
     # date_range uses inclusive date endpoints.
-    return pd.date_range(start_date, end_date).tolist()
+    if end_date < start_date:
+        raise ValueError("End date should be after start date")
+
+    timestamps = pd.date_range(start_date, end_date).tolist()
+
+    return [timestamp for timestamp in timestamps]
 
 """
-get_[sequential, nonsequential, baseline]_accuracy takes:
+get_predictor_accuracy takes:
     days_to_predict: a list of datetimes on which to generate and test predictions
 and returns:
     accuracy_by_comm_area: a dict mapping community area names to the number of days correctly classified
 """
 
-def get_sequential_accuracy(time_series_dict, days_to_predict):
-    sequential_series = predict.sequential_preprocess(time_series_dict)
+def get_predictor_accuracy(time_series_dict, days_to_predict, predictor_to_use):
+    if not issubclass(predictor_to_use, predict.Predictor):
+        raise ValueError("Please pass in a valid predictor.")
+
+    processed_time_series_dict = predictor_to_use.preprocess(time_series_dict)
+
     area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
-        number_correct_predictions = 0
-
-        for day in days_to_predict:
-            predicted_result, prob = predict.sequential(dataframe, day)
-            # Assume that this is store
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
-
-        area_to_performance_map[area] = number_correct_predictions
+    for area, dataframe in processed_time_series_dict.items():
+        area_to_performance_map[area] = get_predictor_accuracy_in_area(dataframe, days_to_predict, predictor_to_use)
 
     return area_to_performance_map
 
-def get_nonsequential_accuracy(time_series_dict, days_to_predict):
-    non_sequential_series = predict.nonsequential_preprocess(time_series_dict)
-    area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
-        number_correct_predictions = 0
+def get_predictor_accuracy_in_area(dataframe, days_to_predict, predictor_to_use):
+    predictor = predictor_to_use(dataframe)
 
-        for day in days_to_predict:
-            predicted_result, prob = predict.nonsequential(dataframe, day)
-            # Assume that prediction is stored in same date rather than the next
-            # day (punt this work to pre-processing)
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
+    last_date = dataframe.index[-1].date()
 
-        area_to_performance_map[area] = number_correct_predictions
+    days_to_predict.sort()
+    first_predicted_date = days_to_predict[0].date()
+    last_predicted_date = days_to_predict[-1].date()
 
-    return area_to_performance_map
+    # Don't start predicting before 2005
+    if first_predicted_date < datetime.date(2005,1,1):
+        raise ValueError("Don't predict dates before 2005")
 
-def get_baseline_accuracy(time_series_dict, days_to_predict):
-    baseline_series = predict.baseline_preprocess(time_series_dict)
+    if last_predicted_date > last_date:
+        raise ValueError("Can't predict beyond our last data point")
 
-    area_to_performance_map = {}
-    for area, dataframe in time_series_dict:
-        number_correct_predictions = 0
+    number_correct_predictions = 0
 
-        for day in days_to_predict:
-            predicted_result, prob = predict.baseline(dataframe, day)
-            # Assume that prediction is stored in same date rather than the next
-            # day (punt this work to pre-processing)
-            actual_result = dataframe['Violent Crime Committed?'][day]
-            if actual_result == predicted_result:
-                number_correct_predictions += 1
+    for day in days_to_predict:
+        predicted_result = predictor.predict(day)
+        actual_result = dataframe['Violent Crime Committed?'].loc[day]
+        if actual_result == predicted_result:
+            number_correct_predictions += 1
 
-        area_to_performance_map[area] = number_correct_predictions
+    return number_correct_predictions
 
-    return area_to_performance_map
 
 class Ranking:
     def __init__(self):
@@ -148,6 +137,11 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
 
     :return: dictionary mapping comm areas to rankings of each neighborhood
     """
+    if seq_accuracy.keys() != nonseq_accuracy.keys() or nonseq_accuracy.keys() != baseline_accuracy.keys():
+        raise ValueError("The cities in your arrays don't match up.")
+
+    if total_count < 1:
+        raise ValueError("Can't have negative trials")
 
     area_to_ranking_map = {}
     # We sorta pick a random array here to iterate over :P
@@ -155,6 +149,12 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
         sequential = seq_accuracy[area]
         nonsequential = nonseq_accuracy[area]
         baseline = baseline_accuracy[area]
+
+        if sequential < 0 or nonsequential < 0 or baseline < 0:
+            raise ValueError("Can't have negative results.")
+
+        if sequential > total_count or nonsequential > total_count or baseline > total_count:
+            raise ValueError("Can't have more accurate predictions that trials")
 
         area_ranking = Ranking()
 
@@ -188,9 +188,9 @@ def find_ranking(ranking, sorted_models, total_count, second_index):
 
     # ... and assign rankings
     if model_comparison == 1:
-        ranking.ranks[sorted_models[second_index][0]] = second_index + 1
+        ranking.ranks[sorted_models[second_index][0]] = ranking.ranks[sorted_models[first_index][0]] + 1
     elif model_comparison == 0:
-        ranking.ranks[sorted_models[second_index][0]] = second_index
+        ranking.ranks[sorted_models[second_index][0]] = ranking.ranks[sorted_models[first_index][0]]
     else:
         sys.exit('Error in sorting algorithm in evaluate.py when calculating ranking for third model')
 
@@ -204,6 +204,15 @@ and returns:
     and 1 if first is significantly better than second (using 95% confidence)
 """
 def run_z_test(first_accuracy, second_accuracy, total_count):
+    if first_accuracy < 0:
+        raise ValueError("First accuracy is negative.")
+
+    if second_accuracy < 0:
+        raise ValueError("Second accuracy is negative.")
+
+    if total_count < 1:
+        raise ValueError("Must have a non-zero count for test")
+
     first_wrong = total_count - first_accuracy
     second_wrong = total_count - second_accuracy
     first_error = first_wrong / total_count
@@ -238,14 +247,18 @@ def report_rankings(rankings):
 
     """
     to_json = {}
-    for area, rank_obj in rankings:
-        # Turn ranking objects into dicts for easy serialization with JSON
-        # class
+    for area, rank_obj in rankings.items():
+        if rank_obj is None:
+            raise ValueError("Supplied no ranking for " + area)
+
+        if rank_obj.ranks is None or rank_obj.accuracy is None:
+            raise ValueError("Ranking() for " + area + " is missing information.")
+
         rank_hash = {}
         rank_hash['ranks'] = rank_obj.ranks
         rank_hash['accuracy'] = rank_obj.accuracy
         to_json[area] = rank_hash
 
-    output_file = open('results.json')
+    output_file = open('results.json', 'w')
     json.dump(to_json, output_file)
     output_file.close()
