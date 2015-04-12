@@ -6,7 +6,6 @@ from sklearn.naive_bayes import GaussianNB
 from clearn.convolve import convolve_by_neighbor
 import datetime
 from abc import ABCMeta, abstractmethod
-from copy import copy
 
 DAYS_IN_MONTH = 30
 
@@ -117,11 +116,11 @@ class NonsequentialPredictor(Predictor):
 
     def predict(self, day_to_predict):
 
-        training_frame = self.get_time_series_up_to(self.time_series, day_to_predict)
+        training_frame = self.get_time_series_including(self.time_series, day_to_predict)
 
         # Grab boolean list of whether a violent crime was committed on each day.
         #  Start with the second day.
-        targets = training_frame['Violent Crime Committed?'][1:]
+        targets = training_frame['Violent Crime Committed?'][1:].values
 
         # Now that we've extracted the targets from the frame, remove them.
         del training_frame['Violent Crime Committed?']
@@ -131,11 +130,9 @@ class NonsequentialPredictor(Predictor):
         #   Now each feature vector is aligned with whether a violent crime was committed on the following day
         feature_vectors = training_frame.values[:-1]
 
-        # Use the Predictor's model as a prototype and train a fresh model for each prediction.
-        model = copy(self.model)
         # Train our model on the targets and features
-        trained_model = model.fit(feature_vectors, targets)
-        feature_vec_to_classify = training_frame.tail(1).features(0)
+        trained_model = self.model.fit(feature_vectors, targets)
+        feature_vec_to_classify = training_frame.tail(1).values
 
         # Even though we're only making one prediction, sklearn expects to receive and output list-like data structures
         prediction = trained_model.predict([feature_vec_to_classify])[0]
@@ -172,9 +169,9 @@ class NonsequentialPredictor(Predictor):
         return days[30:]
 
     @staticmethod
-    def get_time_series_up_to(time_series, day):
+    def get_time_series_including(time_series, day):
         # Grab data frame with all days including the last day, and then cut off the last day
-        return time_series.loc[:day][:-1]
+        return time_series.loc[:day]
 
 
 class BaselinePredictor(Predictor):

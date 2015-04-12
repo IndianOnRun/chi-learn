@@ -1,4 +1,6 @@
 import unittest
+from unittest.mock import MagicMock
+from sklearn.base import BaseEstimator
 import pandas as pd
 import datetime
 from clearn.predict import SequentialPredictor, BaselinePredictor, NonsequentialPredictor
@@ -63,8 +65,52 @@ class BaselineTests(unittest.TestCase):
 
 
 class NonsequentialTests(unittest.TestCase):
-    def setUp(self):
-        pass
+    def test_vector_alignment(self):
+        # Mock out a generic scikit-learn classifier
+        mocked_model = BaseEstimator()
+        mocked_model.fit = MagicMock()
+        mocked_model.predict = MagicMock(return_value=3)
+
+        # Create a simple data frame extending to January 15
+        date_sequence = pd.date_range('1/1/2011', periods=15, freq='D')
+        time_series = pd.DataFrame({
+            # This column will be accessed by name to generate the targets vector.
+            'Violent Crime Committed?': [True, True] + [False]*13,
+
+            # Actual time series used for nonsequential prediction will contain more than one column.
+            # However, we just need to verify that it grabs the correct slices of each column,
+            # so one stand-in column will suffice.
+            'Other Data': [0]*10 + [1]*5
+        }, index=date_sequence)
+
+        # Construct a NonsequentialPredictor with the mock
+        predictor = NonsequentialPredictor(time_series, model=mocked_model)
+
+        # The date to predict comes before the end of the time series,
+        # so all rows from the 13th on should be discarded
+        date_to_predict = datetime.date(2011, 1, 13)
+
+        # The mock always predicts True, so predict() should return True
+        self.assertTrue(predictor.predict(date_to_predict))
+
+        # When feeding training data to the sklearn model,
+        # predict() needs to align each day of the time series with whether a violent crime was committed the NEXT day.
+        # Thus, the first element of the Violent Crime Committed? column should have been removed
+        #  before being used as the model's targets vector because it has no previous day to partner with.
+        expected_targets = [True] + [False]*11
+
+        # Similarly, the last element of any other column (in this case, 'Other Data')
+        # should only go up to the day before the day we're trying to predict
+        expected_features = [[0]]*10 + [[1]]*2
+
+        # Get the two positional arguments passed to mocked_model
+        args = mocked_model.fit.call_args
+        observed_features = args[0][0]
+        observed_targets = args[0][1]
+
+        # Equality tests with numpy arrays are wonky, so I convert numpy arrays to Python lists
+        self.assertEqual(observed_targets.tolist(), expected_targets)
+        self.assertEqual(observed_features.tolist(), expected_features)
 
 
 class PreprocessTests(unittest.TestCase):
@@ -165,8 +211,3 @@ class NonsequentialPreprocessTests(unittest.TestCase):
             'Petty Crimes in Last Month': 60
         }.items():
             self.assertEqual(time_series.iloc[0][col_name], expected_val)
-
-
-
-
-
