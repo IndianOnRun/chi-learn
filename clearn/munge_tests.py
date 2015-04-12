@@ -110,14 +110,19 @@ class TestMakeDays(unittest.TestCase):
         self.time_series = munge.make_series_of_days_from_timestamps(timestamps, latest_day)
 
     def test_index(self):
-        index = self.time_series.index
         # Resampling by day should produce a time series with one element for each day from Jan 1, 2001
         # to Feb 27, 2015, the day the fixture's crimes were committed on
+        index = self.time_series.index
+
+        # The Chciago dataset begins on Jan 1, 2001
         expected_start = date(2001, 1, 1)
         self.assertEqual(expected_start, index[0].to_datetime().date())
+
+        # Each time series should extend to the latest available day in the dataset
         expected_end = date(2015, 2, 27)
         self.assertEqual(expected_end, index[-1].to_datetime().date())
 
+        # Every day in between should be present
         self.assertEqual(len(self.time_series.index), (expected_end - expected_start).days + 1)
 
     def test_column_names(self):
@@ -168,5 +173,6 @@ class TestMasterDict(unittest.TestCase):
         self.assertIn('Chicago', self.master_dict.keys())
 
     def test_each_time_series_has_same_length(self):
+        # Each time series in the master dict should start and end on the same day
         lengths = [len(time_series) for time_series in self.master_dict.values()]
         self.assertTrue(all([length == lengths[0] for length in lengths]))

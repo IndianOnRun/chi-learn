@@ -17,7 +17,7 @@ def get_master_dict():
             return pickle.load(file)
     except IOError:
         print('Unable to open pickled master dictionary. Make sure data/masterDictionary.pickle exists. '
-              'If not, run make_master_dict("path/to/csv/from/Chicago/open/data/portal") to create it.')
+              'If not, run initialize_master_dict.py from the repository root.')
         return None
 
 
@@ -142,8 +142,16 @@ def extract_severity_counts(timestamps):
 
 
 def resample_by_day(timestamps, latest_day):
+    # Compress all timestamps in a day to a single row representing the entire day.
+    #   Sum over the column values of each individual timestamp (for bools, True is 1, False is 0)
     days = timestamps.resample('D', how='sum')
+
+    # Every time series should begin and end on the same day
     common_index = pd.date_range(date(2001, 1, 1), latest_day)
     days = days.reindex(index=common_index)
+
+    # For days that didn't have any crimes, pandas will fill their fields with N/A by default.
+    # Replace every instance of N/A with 0
     days = days.fillna(0)
+
     return days
