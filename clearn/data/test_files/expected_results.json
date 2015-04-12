@@ -1,0 +1,26 @@
+{
+    "Philidelphia": {
+        "accuracy": {
+            "Baseline": 0.5,
+            "Nonsequential": 0.1,
+            "Sequential": 0.3
+        },
+        "ranks": {
+            "Baseline": 1,
+            "Nonsequential": 3,
+            "Sequential": 2
+        }
+    },
+    "Pittsburgh": {
+        "accuracy": {
+            "Baseline": 0.1,
+            "Nonsequential": 0.3,
+            "Sequential": 0.5
+        },
+        "ranks": {
+            "Baseline": 3,
+            "Nonsequential": 2,
+            "Sequential": 1
+        }
+    }
+}
