@@ -7,6 +7,7 @@ import math
 import pandas as pd
 import random
 import sys
+import copy
 
 """
 How do we do this?
@@ -45,9 +46,9 @@ def evaluate(num_days, leave_one_out=False):
         days_to_predict = pick_days(num_days, end_date)
 
     # Get dicts mapping comm area to accuracy on that area
-    seq_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.SequentialPredictor)
-    nonseq_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.NonsequentialPredictor)
-    baseline_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.BaselinePredictor)
+    seq_accuracy = get_predictor_accuracy(copy.deepcopy( time_series_dict ), days_to_predict, predict.SequentialPredictor)
+    nonseq_accuracy = get_predictor_accuracy(copy.deepcopy( time_series_dict ), days_to_predict, predict.NonsequentialPredictor)
+    baseline_accuracy = get_predictor_accuracy(copy.deepcopy( time_series_dict ), days_to_predict, predict.BaselinePredictor)
 
     rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, len(days_to_predict))
     report_rankings(rankings)
