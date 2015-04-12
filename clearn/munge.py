@@ -1,16 +1,39 @@
 import pandas as pd
 import csv
+import pickle
 from clearn import clearn_path
 
 
-def get_master_dict(csv_path):
-    """
+PICKLE_PATH = clearn_path('data/masterDictionary.pickle')
 
-    Returns dictionary mapping each community area name and the city of chicago (key='Chicago')
+
+def get_master_dict():
+    """
+    Returns master_dict saved to file if it is available.
+    """
+    try:
+        with open(PICKLE_PATH, 'rb') as file:
+            return pickle.load(file)
+    except IOError:
+        print('Unable to open pickled master dictionary. Make sure data/masterDictionary.pickle exists. '
+              'If not, run make_master_dict("path/to/csv/from/Chicago/open/data/portal") to create it.')
+        return None
+
+
+def init_master_dict(csv_path):
+    """
+    Creates dictionary mapping each community area name and the city of chicago (key='Chicago')
     to pandas dataframes. THe dataframes are indexed by day and have the following columns:
     ['Arrest', 'Domestic', 'Violent Crimes', 'Severe Crimes', 'Minor Crimes', 'Petty Crimes', 'Violent Crime Committed?', 'Month', 'Weekday']
     There is one exception. The Chicago dataframe does not have the 'Month' and 'Weekday' column.
+
+    Persists master_dict to file.
     """
+    master_dict = make_master_dict(csv_path)
+    persist_master_dict(master_dict)
+
+
+def make_master_dict(csv_path):
     # Transform csv to Pandas data frame
     data_frame = pd.read_csv(csv_path)
     # Drop unnecessary columns and reidex crimes by date
@@ -22,6 +45,10 @@ def get_master_dict(csv_path):
     days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps)
     return days_by_area
 
+
+def persist_master_dict(master_dict):
+    with open(PICKLE_PATH, 'wb') as file:
+        pickle.dump(master_dict, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 """ Used in make_clean_timestamps() """
 

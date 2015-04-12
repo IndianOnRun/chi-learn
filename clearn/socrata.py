@@ -4,6 +4,26 @@ import pandas as pd
 import pickle
 from . import munge
 
+"""
+How am I going to do this?
+1) add make_master_dict to munge
+ - it should persist the master dict to a pickle file. get_master_dict should retrieve it
+2) Create script to update master dict when new data is available
+    a) Find out most recent date in master_dict
+    b) See if more recent date is available
+    c) Make query to grab all new data
+    d) Convert to same format as csv
+    e) munge it
+    f) add it to master_dict
+    g) persist master_dict
+    h) run analysis
+    i) generate prediction for next day
+    j) Check prediction for preceding day
+    k) Generate HTML
+    l) Push HTML to gh_pages branch
+"""
+
+
 PICKLE_PATH = '../data/masterPandasFrame.pickle'
 
 

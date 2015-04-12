@@ -145,7 +145,7 @@ class TestMakeDays(unittest.TestCase):
 class TestMasterDict(unittest.TestCase):
     def setUp(self):
         fixture_path = clearn_path('data/fixtures/mediumCrimeSample.csv')
-        self.master_dict = munge.get_master_dict(fixture_path)
+        self.master_dict = munge.make_master_dict(fixture_path)
 
     def test_all_community_areas_present(self):
         # The community_areas csv should map community area numbers to names
@@ -164,12 +164,3 @@ class TestMasterDict(unittest.TestCase):
 
     def test_chicago_present(self):
         self.assertIn('Chicago', self.master_dict.keys())
-
-    '''
-    I considered adding test_all_frames_have_same_number_of_days.
-    There is an edge case where if every community area is not represented on the last day of
-        the dataframe you use to generate the master dict,
-        then the way we create pandas timeseries will leave some community areas with fewer days.
-    However, it so happens that all community areas are represented on January 1, 2001 which will always be
-        the earliest day for our application.
-    '''
