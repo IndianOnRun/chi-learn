@@ -32,7 +32,7 @@ def evaluate(num_days, leave_one_out=False):
     """
     time_series_dict = munge.get_master_dict()
     # TODO Better way to get the end date?
-    last_day_of_data = time_series_dict['Edgewater'].tail(1).index.to_pydate
+    last_day_of_data = time_series_dict['Edgewater'].index[-1].to_datetime().date()
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
     # crimes), we subtract one
