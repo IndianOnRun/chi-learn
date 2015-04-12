@@ -24,6 +24,16 @@ class TestZTest(unittest.TestCase):
         expected_result = 1
         self.assertEqual(expected_result, actual_result)
 
+    def test_with_same_accuracy(self):
+        first_accuracy = 40
+        second_accuracy = 40
+        total_count = 50
+
+        actual_result = evaluate.run_z_test(first_accuracy, second_accuracy, total_count)
+        expected_result = 0
+
+        self.assertEqual(expected_result, actual_result)
+
     def test_with_second_significantly_better(self):
         first_accuracy = 10
         second_accuracy = 80
@@ -48,7 +58,7 @@ class TestZTest(unittest.TestCase):
 
     def test_with_zero_count(self):
         with self.assertRaises(ValueError):
-            evaluate.run_z_test(1, 1, 0)
+            evaluate.run_z_test(2, 1, 0)
 
 
 class TestReportRankings(unittest.TestCase):

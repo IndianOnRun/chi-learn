@@ -205,6 +205,9 @@ and returns:
     and 1 if first is significantly better than second (using 95% confidence)
 """
 def run_z_test(first_accuracy, second_accuracy, total_count):
+    if first_accuracy == second_accuracy:
+        return 0
+
     if first_accuracy < 0:
         raise ValueError("First accuracy is negative.")
 
