@@ -138,4 +138,48 @@ class TestRankingAlgorithm(unittest.TestCase):
         evaluate.run_z_test = self.original_run_z_test
 
 class TestRankingDictCreation(unittest.TestCase):
-    pass
+    def test_basic_rankings_generation(self):
+        # The numbers returned for the ratings are not going to be
+        # right, but they are correct given what we mock out find_ranking
+        # to be.  Changing the return value in the middle of the function
+        # is a bit much.
+        seq_accuracy = {'Pittsburgh': 230, 'Philidelphia': 100}
+        nonseq_accuracy = {'Pittsburgh': 200, 'Philidelphia': 110}
+        baseline_accuracy = {'Pittsburgh': 80, 'Philidelphia': 80}
+        total_count = 300
+        area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)
+
+        # Checks to make sure each area is accounted for, and that we don't
+        # return any empty rankings
+        for area in ['Pittsburgh', 'Philidelphia']:
+            self.assertTrue(area in area_to_rankings_map)
+            self.assertIsNotNone(area_to_rankings_map[area])
+            self.assertIsNotNone(area_to_rankings_map[area].ranks)
+            self.assertIsNotNone(area_to_rankings_map[area].accuracy)
+
+    def test_ranking_generation_with_differing_length_arrays(self):
+        seq_accuracy = {'Pittsburgh': 230}
+        nonseq_accuracy = {'Pittsburgh': 200, 'Philidelphia': 110}
+        baseline_accuracy = {'Pittsburgh': 80, 'Philidelphia': 80}
+        total_count = 300
+
+        with self.assertRaises(ValueError):
+            area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)
+
+    def test_ranking_generation_with_invalid_day_length(self):
+        seq_accuracy = {'Pittsburgh': 230, 'Philidelphia': 100}
+        nonseq_accuracy = {'Pittsburgh': 200, 'Philidelphia': 110}
+        baseline_accuracy = {'Pittsburgh': 80, 'Philidelphia': 80}
+        total_count = 20
+
+        with self.assertRaises(ValueError):
+            area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)
+
+    def test_ranking_generation_with_negatives(self):
+        seq_accuracy = {'Pittsburgh': -100, 'Philidelphia': 100}
+        nonseq_accuracy = {'Pittsburgh': 200, 'Philidelphia': 110}
+        baseline_accuracy = {'Pittsburgh': 80, 'Philidelphia': 80}
+        total_count = -50
+
+        with self.assertRaises(ValueError):
+            area_to_rankings_map = evaluate.create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_count)

@@ -148,6 +148,11 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
 
     :return: dictionary mapping comm areas to rankings of each neighborhood
     """
+    if seq_accuracy.keys() != nonseq_accuracy.keys() or nonseq_accuracy.keys() != baseline_accuracy.keys():
+        raise ValueError("The cities in your arrays don't match up.")
+
+    if total_count < 1:
+        raise ValueError("Can't have negative trials")
 
     area_to_ranking_map = {}
     # We sorta pick a random array here to iterate over :P
@@ -155,6 +160,12 @@ def create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, total_coun
         sequential = seq_accuracy[area]
         nonsequential = nonseq_accuracy[area]
         baseline = baseline_accuracy[area]
+
+        if sequential < 0 or nonsequential < 0 or baseline < 0:
+            raise ValueError("Can't have negative results.")
+
+        if sequential > total_count or nonsequential > total_count or baseline > total_count:
+            raise ValueError("Can't have more accurate predictions that trials")
 
         area_ranking = Ranking()
 
