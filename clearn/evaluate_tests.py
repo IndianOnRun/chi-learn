@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import MagicMock
-import csv
 import os
 import json
 import copy
-import pandas as pd
+from clearn import clearn_path
 from clearn import evaluate
+
 
 class TestZTest(unittest.TestCase):
     def test_with_first_significantly_better(self):
@@ -43,6 +43,7 @@ class TestZTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate.run_z_test(1, 1, 0)
 
+
 class TestReportRankings(unittest.TestCase):
     def setUp(self):
         first_ranking = evaluate.Ranking()
@@ -61,7 +62,7 @@ class TestReportRankings(unittest.TestCase):
         with open('results.json') as actual_file:
             actual_results = json.load(actual_file)
 
-        with open('clearn/data/test_files/expected_results.json') as expected_file:
+        with open(clearn_path('data/test_files/expected_results.json')) as expected_file:
             expected_results = json.load(expected_file)
 
         self.assertEqual(expected_results, actual_results)
@@ -82,6 +83,7 @@ class TestReportRankings(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             evaluate.report_rankings(malformed_rankings)
+
 
 class TestRankingAlgorithm(unittest.TestCase):
     def setUp(self):
@@ -136,6 +138,7 @@ class TestRankingAlgorithm(unittest.TestCase):
 
     def tearDown(self):
         evaluate.run_z_test = self.original_run_z_test
+
 
 class TestRankingDictCreation(unittest.TestCase):
     pass
