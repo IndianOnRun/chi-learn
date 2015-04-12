@@ -1,10 +1,10 @@
-import unittest
-from unittest.mock import MagicMock
-import os
-import json
-import copy
 from clearn import clearn_path
 from clearn import evaluate
+from unittest.mock import MagicMock
+import copy
+import json
+import os
+import unittest
 
 
 class TestZTest(unittest.TestCase):
