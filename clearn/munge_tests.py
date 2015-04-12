@@ -172,7 +172,7 @@ class TestMasterDict(unittest.TestCase):
     def test_chicago_present(self):
         self.assertIn('Chicago', self.master_dict.keys())
 
-    def test_each_time_series_has_same_length(self):
-        # Each time series in the master dict should start and end on the same day
+    def test_each_time_series_has_correct_length(self):
+        correct_length = len(pd.date_range(date(2001, 1, 1), date(2015, 3, 13)))
         lengths = [len(time_series) for time_series in self.master_dict.values()]
-        self.assertTrue(all([length == lengths[0] for length in lengths]))
+        self.assertTrue(all([length == correct_length for length in lengths]), str(lengths))

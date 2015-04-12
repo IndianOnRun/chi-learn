@@ -37,11 +37,12 @@ def init_master_dict(csv_path):
 def make_master_dict(csv_path):
     # Transform csv to Pandas data frame
     data_frame = pd.read_csv(csv_path)
-    # Drop unnecessary columns and reidex crimes by date
+    # Drop unnecessary columns and reindex crimes by date
     timestamps = make_clean_timestamps(data_frame)
+    # Timestamps are ordered latest to earliest (new crimes on top)
+    latest_day = timestamps.index[0]
     # From crime timestamps, create dictionary mapping community area names
     #   to pandas data frames resampled by day
-    latest_day = timestamps.index[-1]
     days_by_area = get_days_by_area(timestamps, latest_day)
     # Add an extra mapping to include what happened in all of Chicago on each day
     days_by_area['Chicago'] = make_series_of_days_from_timestamps(timestamps, latest_day)
