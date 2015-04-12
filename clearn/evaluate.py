@@ -31,7 +31,6 @@ def evaluate(num_days, leave_one_out=False):
         to performance metrics for each algorithm
     """
     time_series_dict = munge.get_master_dict()
-    # TODO Better way to get the end date?
     last_day_of_data = time_series_dict['Edgewater'].index[-1].to_datetime().date()
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
@@ -46,9 +45,9 @@ def evaluate(num_days, leave_one_out=False):
         days_to_predict = pick_days(num_days, end_date)
 
     # Get dicts mapping comm area to accuracy on that area
-    seq_accuracy = get_sequential_accuracy(time_series_dict, days_to_predict)
-    nonseq_accuracy = get_nonsequential_accuracy(time_series_dict, days_to_predict)
-    baseline_accuracy = get_baseline_accuracy(time_series_dict, days_to_predict)
+    seq_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.SequentialPredictor)
+    nonseq_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.NonsequentialPredictor)
+    baseline_accuracy = get_predictor_accuracy(time_series_dict, days_to_predict, predict.BaselinePredictor)
 
     rankings = create_rankings(seq_accuracy, nonseq_accuracy, baseline_accuracy, len(days_to_predict))
     report_rankings(rankings)
