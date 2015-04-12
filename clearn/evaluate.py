@@ -224,7 +224,7 @@ def run_z_test(first_accuracy, second_accuracy, total_count):
 
     error_diff = first_error - second_error
 
-    variance = ((first_error * (1 - first_error)) + (second_error * (1 - second_error)) / total_count)
+    variance = ((first_error * (1 - first_error)) + (second_error * (1 - second_error))) / total_count
     stdev = math.sqrt(variance)
 
     ci_term = 1.96 * stdev

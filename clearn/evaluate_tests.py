@@ -24,6 +24,10 @@ class TestZTest(unittest.TestCase):
         expected_result = 1
         self.assertEqual(expected_result, actual_result)
 
+    def test_run_sanity_test(self):
+        sanity_result = evaluate.run_z_test(200, 800, 1000)
+        self.assertEqual(-1, sanity_result)
+
     def test_with_same_accuracy(self):
         first_accuracy = 40
         second_accuracy = 40
