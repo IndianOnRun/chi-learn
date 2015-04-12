@@ -30,7 +30,7 @@ def evaluate(num_days, leave_one_out=False):
     Generate a JSON document mapping community area names
         to performance metrics for each algorithm
     """
-    time_series_dict = munge.get_master_dict('crimeSample.csv')
+    time_series_dict = munge.get_master_dict()
     last_day_of_data = time_series_dict.tail(1).index.to_pydate
 
     # Since we can't evaluate the data from data (predicting tomorrow's violent
