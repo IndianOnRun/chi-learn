@@ -131,11 +131,11 @@ class NonsequentialPredictor(Predictor):
         feature_vectors = training_frame.values[:-1]
 
         # Train our model on the targets and features
-        trained_model = self.model.fit(feature_vectors, targets)
+        self.model.fit(feature_vectors, targets)
         feature_vec_to_classify = training_frame.tail(1).values
 
         # Even though we're only making one prediction, sklearn expects to receive and output list-like data structures
-        prediction = trained_model.predict(feature_vec_to_classify)[0]
+        prediction = self.model.predict(feature_vec_to_classify)[0]
         return prediction
 
     @staticmethod

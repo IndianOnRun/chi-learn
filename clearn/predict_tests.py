@@ -69,7 +69,7 @@ class NonsequentialTests(unittest.TestCase):
         # Mock out a generic scikit-learn classifier
         mocked_model = BaseEstimator()
         mocked_model.fit = MagicMock()
-        mocked_model.predict = MagicMock(return_value=3)
+        mocked_model.predict = MagicMock(return_value=[True])
 
         # Create a simple data frame extending to January 15
         date_sequence = pd.date_range('1/1/2011', periods=15, freq='D')
@@ -93,6 +93,10 @@ class NonsequentialTests(unittest.TestCase):
         # The mock always predicts True, so predict() should return True
         self.assertTrue(predictor.predict(date_to_predict))
 
+        # And both fit and predict should have been called
+        self.assertTrue(mocked_model.fit.called)
+        self.assertTrue(mocked_model.predict.called)
+
         # When feeding training data to the sklearn model,
         # predict() needs to align each day of the time series with whether a violent crime was committed the NEXT day.
         # Thus, the first element of the Violent Crime Committed? column should have been removed
@@ -103,14 +107,19 @@ class NonsequentialTests(unittest.TestCase):
         # should only go up to the day before the day we're trying to predict
         expected_features = [[0]]*10 + [[1]]*2
 
-        # Get the two positional arguments passed to mocked_model
-        args = mocked_model.fit.call_args
-        observed_features = args[0][0]
-        observed_targets = args[0][1]
+        # Get the two arguments passed to mocked_model
+        fit_args = mocked_model.fit.call_args
+        observed_features = fit_args[0][0]
+        observed_targets = fit_args[0][1]
 
         # Equality tests with numpy arrays are wonky, so I convert numpy arrays to Python lists
         self.assertEqual(observed_targets.tolist(), expected_targets)
         self.assertEqual(observed_features.tolist(), expected_features)
+
+        # Confirm the correct argument was passed to predict
+        print(mocked_model.predict.call_args)
+        observed_day_to_predict = mocked_model.predict.call_args[0][0]
+        self.assertEqual(observed_day_to_predict.tolist(), [[1]])
 
 
 class PreprocessTests(unittest.TestCase):
