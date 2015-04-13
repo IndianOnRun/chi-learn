@@ -2,7 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-		<title>Proportion of Days with Violent Crime in Chicago Neighborhoods</title>
+		<title>Chi-Learn</title>
         <!-- JQuery -->
         <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
         <!-- Bootstrap -->
@@ -14,14 +14,17 @@
 	<body>
     <div class="container">
         <div class="row">
-            <div id="chloropleth" class="col-md-6"></div>
-            <div id="detail" class="col-md-6">
+            <div id="map" class="col-md-6"></div>
+            <div id="text" class="col-md-6">
                 <h1>Chicago: Predicting Violent Crime</h1>
                 <p> For a random sample of 1000 days between January 1, 2005 and April 10, 2015, this map
                     shows which algorithms performed best in each
                     <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>.
                 </p>
-                <ul> The community areas are colored by which algorithm performed best.
+                <p>
+                    The community areas are colored by which algorithm performed best.
+                </p>
+                <ul> <strong>Key:</strong>
                     <li><span class="label" style="background-color:orange">Tie For First</span></li>
                     <li><span class="label" style="background-color:green">Sequential</span></li>
                     <li><span class="label" style="background-color:blue">Non-sequential</span></li>
@@ -37,6 +40,17 @@
                 </div>
             </div>
         </div>
+        <div class="row">
+            <h2>Algorithm Descriptions</h2>
+            <p>We tested three models against each community area.</p>
+            <h3>Sequential Prediction</h3>
+            <p>Description of hidden Markov model</p>
+            <h3>Nonsequential Prediction</h3>
+            <p>Description of logistic regression</p>
+            <h3>Baseline for Evaluation</h3>
+            <p>Description of naive baseline</p>
+        </div>
+    </div>
         <!-- Bring in the numToArea object that maps from community area numbers to names -->
         <script src="viewer/js/number_to_community_area.js"></script>
         <script src="viewer/js/baseline.js"></script>
@@ -48,7 +62,7 @@
 			var h = 600;
 
 			// Create an SVG element that will hold our map
-			var svg = d3.select("#chloropleth")
+			var svg = d3.select("#map")
 						.append("svg")
 						.attr("width", w)
 						.attr("height", h);
