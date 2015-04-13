@@ -13,12 +13,25 @@
 	</head>
 	<body>
     <div class="container">
+        <h1 style="text-align: center">Predicting Violent Crime in Chicago</h1>
+        <br>
         <div class="row">
-            <div id="map" class="col-md-6"></div>
+            <div class="col-md-6">
+                <div id="map"></div>
+                <p>Click on a community area to see more detail.</p>
+            </div>
+
             <div id="text" class="col-md-6">
-                <h1>Chicago: Predicting Violent Crime</h1>
-                <p> For a random sample of 1000 days between January 1, 2005 and April 10, 2015, this map
-                    shows which algorithms performed best in each
+                <p><strong>The problem:</strong> Given
+                    <a href="https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2">history of crime in Chicago</a>
+                    up to day x, predict whether there will be a violent crime committed in a given community area on day x + 1.
+                </p>
+                <p>
+                    <strong>The approach:</strong> We used two machine learning models and a naive baseline to predict violent crime.
+                </p>
+                <p>
+                    <strong>The results:</strong> For a random sample of 1000 days between January 1, 2005 and April 10, 2015, this map
+                    shows which algorithm performed best in each
                     <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>.
                 </p>
                 <p>
@@ -30,9 +43,7 @@
                     <li><span class="label" style="background-color:blue">Non-sequential</span></li>
                     <li><span class="label" style="background-color:purple">Baseline</span></li>
                 </ul>
-                    <p>
-                    Click on a community area to see more detail.
-                </p>
+
                 <div id="details" hidden>
                     <h2 id="clickedArea"></h2>
                     <p>Days with violent crime since 2001: <strong id="clickedRate"></strong>%</p>
@@ -42,13 +53,46 @@
         </div>
         <div class="row">
             <h2>Algorithm Descriptions</h2>
-            <p>We tested three models against each community area.</p>
+            <p>
+                One of our big questions was what class of machine learning model would be best suited to this problem.
+                Should we use a <em>sequential</em> model that takes the order of crime history into account?
+                With clever data munging, could a nonsequential model do just as well?
+                And will either approach beat a naive baseline that just predicts crime if a neighborhood has seen enough crime in the last thirty days?
+            </p>
+            <p>
+
+            </p>
             <h3>Sequential Prediction</h3>
-            <p>Description of hidden Markov model</p>
+            <p>
+                Crime prediction is sequential in nature.
+                Given a sequence of days with or without violent crime, do we expect a violent crime the next day?
+                We call models that consider the order of training examples sequential.
+                Hidden Markov models and recurrent neural networks are examples of sequential models.
+                We used a hidden Markov model. We used the<a href="https://github.com/hmmlearn/hmmlearn">hmmlearn library</a>.
+            </p>
             <h3>Nonsequential Prediction</h3>
-            <p>Description of logistic regression</p>
+            <p>
+                A nonsequential model like Naive Bayes or logistic regression considers each training example independently of its temporal sequence.
+                However, we cheated by baking history into the training examples.
+                During preprocessing, we add data about criminal activity in the past week and month to each day's feature vector.
+                With this janky temporality, nonsequential classifiers have a fighting chance.
+                We used <a href="http://scikit-learn.org/stable/">scikit-learn's</a> logistic regression.
+            </p>
             <h3>Baseline for Evaluation</h3>
-            <p>Description of naive baseline</p>
+            <p>
+                It's fun to play with fancy algorithms, but do they buy us anything for this problem?
+                We made a simple baseline predictor to find out.
+                Given a day to predict, the baseline will predict violent crime if at least 15 of the last 30 days in that community area had violent crime.
+                This naive predictor can be distressingly effective.
+            </p>
+            <h2>A Note on Ranking</h2>
+            <p>
+                For one algorithm to be ranked above another, it must have performed significantly better.
+                We tested significance with a Z-test at 95% confidence.
+            </p>
+            <h2>Check Out the Code!</h2>
+            <a href="https://github.com/chi-learn/chi-learn">Here it is!</a>
+            <br><br>
         </div>
     </div>
         <!-- Bring in the numToArea object that maps from community area numbers to names -->
