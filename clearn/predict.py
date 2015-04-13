@@ -2,7 +2,7 @@ import pandas as pd
 from clearn import munge
 from hmmlearn.hmm import MultinomialHMM
 import numpy as np
-from sklearn.naive_bayes import GaussianNB
+from sklearn import linear_model
 from clearn.convolve import convolve_by_neighbor
 import datetime
 from abc import ABCMeta, abstractmethod
@@ -50,7 +50,6 @@ class SequentialPredictor(Predictor):
         self.time_series = time_series
 
     def predict(self, day_to_predict):
-        return True
         # Get records of 30 days before day_to_predict
         previous_thirty_days = get_previous_month(self.time_series, day_to_predict)
         binary_crime_sequence = previous_thirty_days['Violent Crime Committed?'].values.tolist()
@@ -66,7 +65,7 @@ class SequentialPredictor(Predictor):
         # Train nine HMMs. They are initialized randomly, so we take "votes" from nine HMMs.
         #  Why 9? Odd numbers preclude ties.
         #  And nine is a decent tradeoff between performance and getting bad results by chance
-        for _ in range(9):
+        for _ in range(3):
             # Train HMM
             model = MultinomialHMM(n_components=3, n_iter=10000)
             model.fit([np.array(binary_crime_sequence)])
@@ -87,7 +86,7 @@ class SequentialPredictor(Predictor):
             votes.append(vote)
 
         # Votes are 1 for crime, 0 for no crime. Return True if majority votes for crime.
-        return sum(votes) > 4
+        return sum(votes) > 1
 
     @staticmethod
     def get_most_likely(probs):
@@ -111,7 +110,7 @@ class SequentialPredictor(Predictor):
 
 class NonsequentialPredictor(Predictor):
 
-    def __init__(self, time_series, model=GaussianNB()):
+    def __init__(self, time_series, model=linear_model.LogisticRegression()):
         self.time_series = time_series
         self.model = model
 
