@@ -6,69 +6,41 @@
         <!-- JQuery -->
         <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
         <!-- Bootstrap -->
-        <link rel="stylesheet" href="viewer/css/bootstrap.css"></link>
+        <link rel="stylesheet" href="viewer/css/bootstrap.css"/>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 		<!-- D3 JS -->
         <script type="text/javascript" src="viewer/d3/d3.v3.js"></script>
 	</head>
 	<body>
     <div class="container">
-        <nav class="navbar navbar-default">
-            <div class="container-fluid">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
-                            aria-expanded="false" aria-controls="navbar">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <a class="navbar-brand" href="#">Chi-Learn</a>
-                </div>
-                <div id="navbar" class="navbar-collapse collapse">
-                    <ul class="nav navbar-nav">
-                        <li class="active"><a href="#">Home</a></li>
-                        <li><a href="#">About</a></li>
-                        <li><a href="#">Contact</a></li>
-                        <li class="dropdown">
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
-                               aria-expanded="false">Dropdown <span class="caret"></span></a>
-                            <ul class="dropdown-menu" role="menu">
-                                <li><a href="#">Action</a></li>
-                                <li><a href="#">Another action</a></li>
-                                <li><a href="#">Something else here</a></li>
-                                <li class="divider"></li>
-                                <li class="dropdown-header">Nav header</li>
-                                <li><a href="#">Separated link</a></li>
-                                <li><a href="#">One more separated link</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-                <!--/.nav-collapse -->
-            </div>
-            <!--/.container-fluid -->
-        </nav>
         <div class="row">
             <div id="chloropleth" class="col-md-6"></div>
             <div id="detail" class="col-md-6">
-                <h1>Chicago: Violent Crime by Community Area</h1>
-                <p> For each
-                    <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>,
-                    this map shows the proportion of days since January 1, 2001 where a violent crime was committed.
-                    Darker colors mean more days with crime.
+                <h1>Chicago: Predicting Violent Crime</h1>
+                <p> For a random sample of 1000 days between January 1, 2005 and April 10, 2015, this map
+                    shows which algorithms performed best in each
+                    <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>.
                 </p>
-                <p>
+                <ul> The community areas are colored by which algorithm performed best.
+                    <li><span class="label" style="background-color:orange">Tie For First</span></li>
+                    <li><span class="label" style="background-color:green">Sequential</span></li>
+                    <li><span class="label" style="background-color:blue">Non-sequential</span></li>
+                    <li><span class="label" style="background-color:purple">Baseline</span></li>
+                </ul>
+                    <p>
                     Click on a community area to see more detail.
                 </p>
-                <h2 id="clickedArea"></h2>
-                <p id="clickedMsg" hidden>Days with violent crime: <strong id="clickedRate"></strong>%</p></p>
+                <div id="details" hidden>
+                    <h2 id="clickedArea"></h2>
+                    <p>Days with violent crime since 2001: <strong id="clickedRate"></strong>%</p>
+                    <div id="rankings"></div>
+                </div>
             </div>
         </div>
-    </div>
         <!-- Bring in the numToArea object that maps from community area numbers to names -->
         <script src="viewer/js/number_to_community_area.js"></script>
         <script src="viewer/js/baseline.js"></script>
+        <script src="viewer/js/rankings.js"></script>
 		<script type="text/javascript">
 
 			//Width and height
@@ -92,15 +64,40 @@
                                 // We are representing probabilities
                                 .domain([0,1]);
 
+            function colorFromRanking(ranking){
+                if (isTieForFirst(ranking)){
+                    return 'orange'
+                }
+                function isFirst(algorithm){
+                    return ranking[algorithm] == 1;
+                }
+                if (isFirst('sequential')) return 'green';
+                else if (isFirst('nonsequential')) return 'blue';
+                else if (isFirst('baseline')) return 'purple';
+                // Shouldn't get here
+                else return 'pink'
+            }
+
+            function isTieForFirst(ranking){
+                var numerical_ranks = [];
+                for (var algorithm in ranking){
+                    numerical_ranks.push(ranking[algorithm]);
+                }
+                return (numerical_ranks.filter(function(x){return x == 1}).length > 1)
+            }
+
             // Load in GeoJSON data
             d3.json("viewer/json/commAreasGeo.json", function(geoJson) {
 
                 // D3 can only bind one datum to a DOM element at a time,
                 // so we need to combine the GeoJSON data and the crime data
                 for (var index in geoJson.features) {
+                    //console.log(index)
                     area = geoJson.features[index];
                     geoJson.features[index].name = numToAreaName[area.area_number];
-                    geoJson.features[index].crimeRate = areaNumToCrimeRate[area.area_number]
+                    geoJson.features[index].crimeRate = areaNumToCrimeRate[area.area_number];
+                    geoJson.features[index].ranking = rankings[numToAreaName[area.area_number]];
+                    //console.log(rankings[numToAreaName[area.area_number]])
                 }
 
                 // Create a view that is more or less centered on Chicago
@@ -121,7 +118,7 @@
                     // And by convention, d is used as a parameter in D3.js callbacks when referring to a datum that an element is bound to.
                     .attr("d", projectCoordinatesToSVG)
                     .style("fill", function(d){
-                        return color(d.crimeRate)
+                        return colorFromRanking(d.ranking.ranks)
                     })
 
                     // Add a black border to each community area
@@ -138,9 +135,19 @@
                         .attr("opacity", 1);
                     })
                     .on("click", function(d){
+                            $("#details").show();
                             $("#clickedArea").text(d.name);
-                            $("#clickedMsg").show();
                             $("#clickedRate").text(Math.round(d.crimeRate*100));
+                            $("#rankings").text("");
+                            var area_stats = d.ranking;
+                            var alg_names = ['sequential', 'nonsequential', 'baseline'];
+                            for (var i = 0; i < alg_names.length; i++) {
+                                var alg_name = alg_names[i];
+                                var uppercase_alg_name = alg_name.charAt(0).toUpperCase() + alg_name.slice(1);
+                                $("#rankings").append("<h4>" + uppercase_alg_name + "</h4><ul>"
+                                + "<li>Rank: " + area_stats.ranks[alg_name] + "</li>"
+                                + "<li>Percentage of days correctly predicted: " + area_stats.accuracy[alg_name] + "%</li>")
+                            }
                     })
 
                     // Add tooltip with community area's name
