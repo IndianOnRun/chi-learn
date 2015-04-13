@@ -160,7 +160,7 @@
                                 var uppercase_alg_name = alg_name.charAt(0).toUpperCase() + alg_name.slice(1);
                                 $("#rankings").append("<h4>" + uppercase_alg_name + "</h4><ul>"
                                 + "<li>Rank: " + area_stats.ranks[alg_name] + "</li>"
-                                + "<li>Percentage of days correctly predicted: " + area_stats.accuracy[alg_name] + "%</li>")
+                                + "<li>Percentage of days correctly predicted: " + Math.round(area_stats.accuracy[alg_name]/10) + "%</li>")
                             }
                     })
 
