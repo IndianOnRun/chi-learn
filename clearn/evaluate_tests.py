@@ -48,7 +48,7 @@ class TestZTest(unittest.TestCase):
         self.assertEqual(expected_result, actual_result)
 
     def test_with_no_significant_difference(self):
-        first_accuracy = 130
+        first_accuracy = 139
         second_accuracy = 140
         total_count = 150
 

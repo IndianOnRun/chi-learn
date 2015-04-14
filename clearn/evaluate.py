@@ -204,7 +204,7 @@ and returns:
     significantly_different: -1 if first is significantly worse than second, 0 if there is no significant difference,
     and 1 if first is significantly better than second (using 95% confidence)
 """
-def run_z_test(first_accuracy, second_accuracy, total_count):
+def run_z_test(first_accuracy, second_accuracy, total_count, multiplier=1.6):
     if first_accuracy == second_accuracy:
         return 0
 
@@ -227,7 +227,7 @@ def run_z_test(first_accuracy, second_accuracy, total_count):
     variance = ((first_error * (1 - first_error)) + (second_error * (1 - second_error))) / total_count
     stdev = math.sqrt(variance)
 
-    ci_term = 1.96 * stdev
+    ci_term = multiplier * stdev
 
     ci_left_boundary = error_diff - ci_term
     ci_right_boundary = error_diff + ci_term
