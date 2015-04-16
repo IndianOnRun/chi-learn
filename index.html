@@ -30,18 +30,19 @@
                     <strong>The approach:</strong> We used two machine learning models and a naive baseline to predict violent crime.
                 </p>
                 <p>
-                    <strong>The results:</strong> For a random sample of 1000 days between January 1, 2005 and April 10, 2015, this map
-                    shows which algorithm performed best in each
+                    <strong>The results:</strong> We tested each algorithm against a random sample fo 2500 days between January 1, 2005 and April 3, 2015. Sequential did poorly across the board. This map
+                    compares the performance of the non-sequential and baseline algorithms in each
                     <a href="http://en.wikipedia.org/wiki/Community_areas_in_Chicago">community area</a>.
                 </p>
                 <p>
-                    The community areas are colored by which algorithm performed best.
+                    Darker green means non-sequential did better.
                 </p>
                 <ul> <strong>Key:</strong>
-                    <li><span class="label" style="background-color:orange">Tie For First</span></li>
-                    <li><span class="label" style="background-color:green">Sequential</span></li>
-                    <li><span class="label" style="background-color:blue">Non-sequential</span></li>
-                    <li><span class="label" style="background-color:purple">Baseline</span></li>
+                    <li><span class="label" style="background-color:rgb(0,109,44)">Non-sequential significantly better</span></li>
+                    <li><span class="label" style="background-color:rgb(49,163,84)">Non-sequential better</span></li>
+                    <li><span class="label" style="background-color:rgb(116,196,118)">Draw</span></li>
+                    <li><span class="label" style="background-color:rgb(186,228,179); color:black">Baseline better</span></li>
+                    <li><span class="label" style="background-color:rgb(237,248,233); color:black">Baseline significantly better</span></li>
                 </ul>
 
                 <div id="details" hidden>
@@ -111,38 +112,45 @@
 						.attr("width", w)
 						.attr("height", h);
 
-            // Define quantize scale to sort data values into buckets of color
-			var color = d3.scale.quantize()
-                                // These are shades of green used in a D3 book. They look nice.
-								.range(["rgb(237,248,233)",
-                                        "rgb(186,228,179)",
-                                        "rgb(116,196,118)",
-                                        "rgb(49,163,84)",
-                                        "rgb(0,109,44)"])
-                                // We are representing probabilities
-                                .domain([0,1]);
+
+            var numBaseline = 0;
+            var numNonseq = 0;
 
             function colorFromRanking(ranking){
-                if (isTieForFirst(ranking)){
-                    return 'orange'
+                var nonseqPredicted = ranking.accuracy['nonsequential'];
+                var nonseqRank = ranking.ranks['nonsequential'];
+                var baselinePredicted = ranking.accuracy['baseline'];
+                var baselineRank = ranking.ranks['baseline'];
+
+                // If less than 1% difference
+                if (Math.abs(nonseqPredicted - baselinePredicted) < 10){
+                    // call it a draw. Give it mix of blue and orange.
+                    return 'rgb(116,196,118)'
                 }
-                function isFirst(algorithm){
-                    return ranking[algorithm] == 1;
+
+                // If difference is not statistically significant
+                if (nonseqRank === baselineRank){
+                    if (nonseqPredicted > baselinePredicted){
+                        // Nonseq did a bit better. Give it more orange than blue
+                        numNonseq++;
+                        return 'rgb(49,163,84)'
+                    }
+                    else{
+                        numBaseline++;
+                        return 'rgb(186,228,179)'
+                    }
                 }
-                if (isFirst('sequential')) return 'green';
-                else if (isFirst('nonsequential')) return 'blue';
-                else if (isFirst('baseline')) return 'purple';
-                // Shouldn't get here
-                else return 'pink'
+                // Difference is statistically significant
+                else{
+                    if (nonseqPredicted > baselinePredicted){
+                        return 'rgb(0,109,44)'
+                    }
+                    else{
+                        return 'rgb(237,248,233)';
+                    }
+                }
             }
 
-            function isTieForFirst(ranking){
-                var numerical_ranks = [];
-                for (var algorithm in ranking){
-                    numerical_ranks.push(ranking[algorithm]);
-                }
-                return (numerical_ranks.filter(function(x){return x == 1}).length > 1)
-            }
 
             // Load in GeoJSON data
             d3.json("viewer/json/commAreasGeo.json", function(geoJson) {
@@ -176,7 +184,7 @@
                     // And by convention, d is used as a parameter in D3.js callbacks when referring to a datum that an element is bound to.
                     .attr("d", projectCoordinatesToSVG)
                     .style("fill", function(d){
-                        return colorFromRanking(d.ranking.ranks)
+                        return colorFromRanking(d.ranking)
                     })
 
                     // Add a black border to each community area
@@ -204,7 +212,7 @@
                                 var uppercase_alg_name = alg_name.charAt(0).toUpperCase() + alg_name.slice(1);
                                 $("#rankings").append("<h4>" + uppercase_alg_name + "</h4><ul>"
                                 + "<li>Rank: " + area_stats.ranks[alg_name] + "</li>"
-                                + "<li>Percentage of days correctly predicted: " + Math.round(area_stats.accuracy[alg_name]/10) + "%</li>")
+                                + "<li>Percentage of days correctly predicted: " + Math.round(area_stats.accuracy[alg_name]/25) + "%</li>")
                             }
                     })
 
@@ -213,6 +221,9 @@
                     .text(function(d){
                         return d.name
                     });
+
+                console.log('Baseline better: ' + numBaseline);
+                console.log('Nonseq better: ' + numNonseq);
 
             });
 
